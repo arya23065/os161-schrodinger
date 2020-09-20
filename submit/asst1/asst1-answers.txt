@@ -48,5 +48,35 @@ asst1-start
 
 Step 5:
 
-1. 
+1. The first line of OS/161 executed when a trap occurs can be found in the file src/kern/arch/mips/locore/exception-mips1.S. 
+    The exception is triggered by "j common_exception" which is on line 69 for UTLB exceptions and line 87 for general exceptions. 
+    From this point, the trapframe is set up and then control gets transferred to mips_trap() in src/kern/arch/mips/locore/trap.c.
+    This functions determines the type of trap using exception codes, and in case of an interrupt (since it is a type of trap, the initial
+    process of exception handling does not differ), the interrupt handler is called. Consequently, mainbus_interrupt() is called which 
+    can be found in src/kern/arch/sys161/dev/lamebus_machdep.c. 
+
+2. The code in OS/161 that invokes system calls from user programs can be found in src/userland/lib/libc/arch/mips/syscalls-mips.S on line 84.
+    When the syscall causes a trap, it is recognised by examining exception codes, in mips_trap() in src/kern/arch/mips/locore/trap.c.
+    The OS/161 code that handles system calls can be found in this same file on line 224. 
+
+3. There are libc functions in the common part of the source tree as well as in userland, as this gives access to the common functions such as 
+    strlen and printf to users as well as the kernel, as they both need to utilise them (they are basic, required functions). There are two 
+    different copies of these in order to prevent the user from tempering with the kernel's execution of these functions - in case of any errors,
+    only the userland copy of the libc might be damaged but the kernel's copy will be alright, which will in turn allow the user's functionality
+    to be maintained as well. 
+
+4. Two things that configure configures are - 
+    a. Target hardware platform, PLATFORM, to 'sys161'
+    b. Machine type, MACHINE, to 'mips'
+    Any changes in configuration might invalidate the configuration and make you need/want to rerun it, such as a change in OS, or running it on 
+    different hardware with different default debug flag, or the default locations of the root of the installed system.
+
+5. Some of the details that make a function 'machine-dependent' could be the bit widths for certain signals, the values assigned to important
+    constants, instructions, the amount of registers and the usage of big or little endian. It is important to maintain this separation in 
+    order to increase reusability of code - machine-independent code can be reused directly while machine-dependent code can be altered.
+
+6. In the file src/kern/arch/mips/locore/exception-mips1.S, on line 133, it states that the trapframe is 37 words long therefore there are 
+    37 uint32_t values, as indicated in src/kern/arch/mips/include/traprframe.h. Therefore the size is 37 * 32 / 8 = 148 bytes. 
+
+7. 
 
