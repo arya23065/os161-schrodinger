@@ -78,5 +78,42 @@ Step 5:
 6. In the file src/kern/arch/mips/locore/exception-mips1.S, on line 133, it states that the trapframe is 37 words long therefore there are 
     37 uint32_t values, as indicated in src/kern/arch/mips/include/traprframe.h. Therefore the size is 37 * 32 / 8 = 148 bytes. 
 
-7. 
+7. You should rerun the kern/conf/config script when you change kernel configuration settings or if you change any piece of code. 
+    Examples of when the configuration file needs to be rerun, after corrections, is in case you run it in the wrong location, 
+    if you have syntax errors, or if you changed the actual headers during compilation or if you file list cannot be validated. 
+
+8. You should run bmake depend in kern/compile/DUMBVM in order to update the header file depend information (so in case you update dependencies). 
+    You can rerun it if you change header file inclusions or after rerunning config. 
+
+9. You should run bmake in kern/compile/DUMBVM in order to build the C program and user libraries in DUMBVM - so whenever a change in code is 
+    made to DUMBVM, after which you can run bmake install to copy the results into ~/os161/root.
+
+10. First, add a file at a known location with only "Hello World" in it. Boot the kernel using 'sys161 kernel', open the menu by typing '?',
+    open the operations menu using '?o', then type 'pf *filelocation*' in order to print the file. This while print "Hello World!". 
+    OR 
+    In order to create a new command to print out "Hello World!" - navigate to the file src/kern/main/menu.c, on line 502, add a command to the 
+    main menu by adding "[?h] Print Hello World", to the array. Additionally, navigate to the struct on line 527 and add { "?h",cmd_hello } to 
+    the menu sections. Then add a function in the file, before line 405 in the menus section, as follows - 
+            static
+            int
+            cmd_hello()
+            {
+                kprintf("Hello World!");
+                return 0;
+            }
+
+11. You need to include the 'fundamental functionalities' included in the user bins, in OS/161 distribution and not use the standard utilities 
+    that are present on the machine on which you're working, as when you're running OS/161 and you enter a command, it will search OS/161's 
+    directories for an appropirate command - since the kernel you will be running will be of OS/161 and not your own machines kernel. Hence, 
+    it is important to define these functions so that the OS/161 kernel knows what to do - the virtual machine is abstracted and cannot access 
+    commands of your local machine.
+
+12. When a user program exits, the return value is passed to the parent function which called the current program, by placing it in a predefined
+    special register that expects to receive the return value. Upon research, I have found that result of system calls from user programs can be 
+    found in register v0, and register a3 indicated whether or not an error occurred. From src/userland/lib/crt0/mips/crt0.S, it can be seen that 
+    the return value of main is put into register v0, then moved to the callee-save register s0, and then register a0 as the return argument. 
+
+13. Navigate to the file src/kern/include/kern/syscall.h and define your system call number. Add a file containing the system call code in 
+    src/kern/syscall. Add the syscall details to the switch statement on line 102 in the file src/kern/arch/mips/syscall/syscall.c. Since we've 
+    modified code, we must rerun the kern/conf/config script and rerun bmake depends. 
 
