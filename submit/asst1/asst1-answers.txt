@@ -117,3 +117,71 @@ Step 5:
     src/kern/syscall. Add the syscall details to the switch statement on line 102 in the file src/kern/arch/mips/syscall/syscall.c. Since we've 
     modified code, we must rerun the kern/conf/config script and rerun bmake depends. 
 
+Step 7:
+
+14. The first function to that executes when OS/161 starts up is __start().
+
+    gdb output-     Remote debugging using unix:.sockets/gdb
+                    __start () at ../../arch/sys161/main/start.S:54
+                    54         addiu sp, sp, -24
+
+15. The first assembly instruction to execute is addiu sp, sp, -24
+
+    gdb output-     Remote debugging using unix:.sockets/gdb
+                    __start () at ../../arch/sys161/main/start.S:54
+                    54         addiu sp, sp, -24
+
+16. Num     Type           Disp Enb Address    What
+    1       breakpoint     keep y   0x800139e4 in kmain at ../../main/main.c:211
+    2       breakpoint     keep y   0x80014a0c in menu at ../../main/menu.c:697
+
+17. The early bootstrap code in OS161 will copy exception handlers to where the processor expects them to be. Then it will jump to kmain.
+
+
+18. The asembly instructions that calls the kernel main function is jal kmain. 
+
+19. Please not that lines of code in boot() that aren't function calls such as kprintf statements, and repetitions have been removed
+
+    (gdb) n
+    109             ram_bootstrap();
+    (gdb) n
+    110             proc_bootstrap();
+    (gdb) n
+    111             thread_bootstrap();
+    (gdb) n
+    112             hardclock_bootstrap();
+    (gdb) n
+    113             vfs_bootstrap();
+    (gdb) n
+    114             kheap_nextgeneration();
+    (gdb) n
+    119             mainbus_bootstrap();
+    (gdb) n
+    122             pseudoconfig();
+    (gdb) n
+    127             vm_bootstrap();
+    (gdb) n
+    128             kprintf_bootstrap();
+    (gdb) n
+    129             thread_start_cpus();
+    (gdb) n
+    132             vfs_setbootfs("emu0");
+
+20. (gdb) p bootcpu 
+    $1 = (struct cpu *) 0x80000
+    (gdb) p *bootcpu 
+    Cannot access memory at address 0x80000
+
+21. (gdb) p bootcpu
+    $2 = (struct cpu *) 0x8003af00
+    (gdb) p *bootcpu
+    $3 = {c_self = 0x8003af00, c_number = 0, c_hardware_number = 0, c_curthread = 0x8003bf80, c_zombies = {tl_head = {tln_prev = 0x0, tln_next = 0x8003af1c, tln_self = 0x0}, 
+        tl_tail = {tln_prev = 0x8003af10, tln_next = 0x0, tln_self = 0x0}, tl_count = 0}, c_hardclocks = 0, c_spinlocks = 0, c_isidle = false, c_runqueue = {tl_head = {
+        tln_prev = 0x0, tln_next = 0x8003af44, tln_self = 0x0}, tl_tail = {tln_prev = 0x8003af38, tln_next = 0x0, tln_self = 0x0}, tl_count = 0}, c_runqueue_lock = {
+        splk_lock = 0, splk_holder = 0x0}, c_ipi_pending = 0, c_shootdown = {{ts_placeholder = 0} <repeats 16 times>}, c_numshootdown = 0, c_ipi_lock = {splk_lock = 0, 
+        splk_holder = 0x0}}
+
+22. 0 cpus
+
+23. $2 = {arr = {v = 0x0, num = 0, max = 0}}
+
