@@ -137,7 +137,6 @@ Step 7:
 
 17. The early bootstrap code in OS161 will copy exception handlers to where the processor expects them to be. Then it will jump to kmain.
 
-
 18. The asembly instructions that calls the kernel main function is jal kmain. 
 
 19. Please not that lines of code in boot() that aren't function calls such as kprintf statements, and repetitions have been removed
@@ -183,5 +182,11 @@ Step 7:
 
 22. 0 cpus
 
-23. $2 = {arr = {v = 0x0, num = 0, max = 0}}
+23. 1 cpus
+    cpu 0:
+    $1 = {c_self = 0x8003af00, c_number = 0, c_hardware_number = 0, c_curthread = 0x8003bf80, c_zombies = {tl_head = {tln_prev = 0x0, tln_next = 0x8003af1c, tln_self = 0x0}, 
+        tl_tail = {tln_prev = 0x8003af10, tln_next = 0x0, tln_self = 0x0}, tl_count = 0}, c_hardclocks = 1, c_spinlocks = 0, c_isidle = false, c_runqueue = {tl_head = {
+        tln_prev = 0x0, tln_next = 0x8003af44, tln_self = 0x0}, tl_tail = {tln_prev = 0x8003af38, tln_next = 0x0, tln_self = 0x0}, tl_count = 0}, c_runqueue_lock = {
+        splk_lock = 0, splk_holder = 0x0}, c_ipi_pending = 0, c_shootdown = {{ts_placeholder = 0} <repeats 16 times>}, c_numshootdown = 0, c_ipi_lock = {splk_lock = 0, 
+        splk_holder = 0x0}}
 
