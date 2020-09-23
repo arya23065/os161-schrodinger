@@ -156,6 +156,18 @@ lock_create(const char *name)
 
         // add stuff here as needed
 
+        // curr_thread is what you can use to access the currthread running on the cpu 
+
+        lock->lock_wchan = wchan_create(lock->lk_name);
+	if (lock->lock_wchan == NULL) {
+		kfree(lock->lk_name);
+		kfree(lock);
+		return NULL;
+	}
+
+        spinlock_init(&lock->lock_spin);
+        lock->held = 0; 
+
         return lock;
 }
 
@@ -166,6 +178,8 @@ lock_destroy(struct lock *lock)
 
         // add stuff here as needed
 
+        KASSERT(lock->held != 1); // must be unlocked to be destroyed
+
         kfree(lock->lk_name);
         kfree(lock);
 }
@@ -174,15 +188,35 @@ void
 lock_acquire(struct lock *lock)
 {
         // Write this
+        KASSERT(lock != NULL);
+        KASSERT(curthread->t_in_interrupt == false);    // May not block in an interrupt handler.
+	spinlock_acquire(&lock->lock_spin);
 
+        while (lock->held == 0) { // might have infinite loopppppp
+		wchan_sleep(lock->lock_wchan, &lock->lock_spin);
+        }
+
+        KASSERT(lock->held != 1);
+        KASSERT(!lock_do_i_hold(lock)); 
+
+        while (lock->held) {
+                wchan_sleep(lock);
+        }        
+        
+        KASSERT(lock->held == 1);
+        lock->held--;
+	spinlock_release(&lock->lock_spin);
         (void)lock;  // suppress warning until code gets written
+
 }
 
 void
 lock_release(struct lock *lock)
 {
         // Write this
-
+        KASSERT(lock != NULL);
+        KASSERT(lock->held != 0);
+        lock->held = 0; 
         (void)lock;  // suppress warning until code gets written
 }
 

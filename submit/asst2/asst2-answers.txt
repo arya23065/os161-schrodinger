@@ -1,0 +1,9 @@
+1. When a thread exits - The thread detaches from the current process, the stack-guard band is checked, to make sure that overflow 
+    hasn't occured, the run queue is locked by acquiring the spinlock, if there's nothing to do, it returns, else the thread is 
+    added to the list on the wait channel, the lock is released, and the thread is flagged as 'ZOMBIE'. Then, the next thread is obtianed. 
+
+    When a thread sleeps - If in an interrupt handler, the thread is not allowed to sleep, else the iff and when the spin lock for the 
+    specified wait channel is obtained, and no other spinlock is held, the cpu is yielded to another process ie. yield to another
+    runnable thread, and the current thread goes to sleep on the specified wait channel. 
+
+2. The function thread_switch handles a context switch. 
