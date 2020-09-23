@@ -73,7 +73,7 @@ void V(struct semaphore *);
  * (should be) made internally.
  */
 struct lock {
-        char *lock_name;
+        char *lk_name;
         // add what you need here
         // (don't forget to mark things volatile as needed)
         struct wchan *lock_wchan;
