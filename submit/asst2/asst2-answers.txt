@@ -6,4 +6,11 @@
     specified wait channel is obtained, and no other spinlock is held, the cpu is yielded to another process ie. yield to another
     runnable thread, and the current thread goes to sleep on the specified wait channel. 
 
-2. The function thread_switch handles a context switch. 
+2. The function thread_switch handles a context switch. In particular, this function calls switchframe_switch which achieves the actual switch.
+
+3. S_RUN - thread is currently running and is occupying the cpu 
+    S_READY - the thread is ready to run and is waiting to be yielded to / scheduled, in the queue - waiting for the cpu to become available
+    S_SLEEP - the thread is currently sleeping and is waiting to be woken up so that it an be added to the runnable queue
+    S_ZOMBIE - the thread is complete but not joined or detached - hasnt been freed / destroyed yet
+
+4. 

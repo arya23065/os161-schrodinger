@@ -157,16 +157,18 @@ lock_create(const char *name)
         // add stuff here as needed
 
         // curr_thread is what you can use to access the currthread running on the cpu 
+        lock->lk_holder = NULL;
 
-        lock->lock_wchan = wchan_create(lock->lk_name);
-	if (lock->lock_wchan == NULL) {
+        lock->lk_wchan = wchan_create(lock->lk_name);
+	if (lock->lk_wchan == NULL) {
 		kfree(lock->lk_name);
 		kfree(lock);
 		return NULL;
 	}
 
-        spinlock_init(&lock->lock_spin);
-        lock->held = 0; 
+        spinlock_init(&lock->lk_spin);
+        lock->lk_held = 0; 
+//         // printf("lk held value is %d", &lock->lk_held);
 
         return lock;
 }
@@ -178,8 +180,11 @@ lock_destroy(struct lock *lock)
 
         // add stuff here as needed
 
-        KASSERT(lock->held != 1); // must be unlocked to be destroyed
+        KASSERT(lock->lk_held != 1); // must be unlocked to be destroyed
+        KASSERT(lock->lk_holder == NULL);
 
+        spinlock_cleanup(&lock->lk_spin);
+	wchan_destroy(lock->lk_wchan);
         kfree(lock->lk_name);
         kfree(lock);
 }
@@ -188,26 +193,21 @@ void
 lock_acquire(struct lock *lock)
 {
         // Write this
+
         KASSERT(lock != NULL);
         KASSERT(curthread->t_in_interrupt == false);    // May not block in an interrupt handler.
-	spinlock_acquire(&lock->lock_spin);
+	spinlock_acquire(&lock->lk_spin);
 
-        while (lock->held == 0) { // might have infinite loopppppp
-		wchan_sleep(lock->lock_wchan, &lock->lock_spin);
+        while (lock->lk_held == 1) { // lock held, go to sleep, try again!!!
+		wchan_sleep(lock->lk_wchan, &lock->lk_spin);
         }
 
-        KASSERT(lock->held != 1);
-        KASSERT(!lock_do_i_hold(lock)); 
-
-        while (lock->held) {
-                wchan_sleep(lock);
-        }        
-        
-        KASSERT(lock->held == 1);
-        lock->held--;
-	spinlock_release(&lock->lock_spin);
+        KASSERT(lock->lk_holder == NULL); 
+        KASSERT(lock->lk_held == 0);
+        lock->lk_held++; 
+        lock->lk_holder = curthread; 
+        spinlock_release(&lock->lk_spin);   
         (void)lock;  // suppress warning until code gets written
-
 }
 
 void
@@ -215,8 +215,16 @@ lock_release(struct lock *lock)
 {
         // Write this
         KASSERT(lock != NULL);
-        KASSERT(lock->held != 0);
-        lock->held = 0; 
+        KASSERT(lock->lk_holder != NULL);
+
+        spinlock_acquire(&lock->lk_spin);
+
+        lock->lk_holder = NULL;
+        lock->lk_held--;
+        KASSERT(lock->lk_held == 0);
+        wchan_wakeone(lock->lk_wchan, &lock->lk_spin);
+        spinlock_release(&lock->lk_spin);
+
         (void)lock;  // suppress warning until code gets written
 }
 
@@ -227,7 +235,9 @@ lock_do_i_hold(struct lock *lock)
 
         (void)lock;  // suppress warning until code gets written
 
-        return true; // dummy until code gets written
+        // return true; // dummy until code gets written
+
+	return (lock->lk_holder == curthread);
 }
 
 ////////////////////////////////////////////////////////////
