@@ -196,19 +196,25 @@ lock_acquire(struct lock *lock)
         KASSERT(curthread->t_in_interrupt == false);    // May not block in an interrupt handler.
         // KASSERT(lock->lk_holder != curthread);
 
+        if (CURCPU_EXISTS()) {
+		if (lock->lk_holder == curthread) {
+			return;
+		}
+	}
+
 	spinlock_acquire(&lock->lk_spin);
 
         while (lock->lk_held) { // lock held, go to sleep, try again!!!
 		wchan_sleep(lock->lk_wchan, &lock->lk_spin);
         }
 
-        KASSERT(lock->lk_holder == NULL); 
         KASSERT(!(lock->lk_held));
+        KASSERT(lock->lk_holder == NULL); 
+
         lock->lk_held = true; 
         lock->lk_holder = curthread; 
         // kprintf("\n\nhe %s %d \n", lock->lk_name, lock->lk_held);
         spinlock_release(&lock->lk_spin);   
-        (void)lock;  // suppress warning until code gets written
 }
 
 void
@@ -217,22 +223,20 @@ lock_release(struct lock *lock)
         // Write this
         KASSERT(lock != NULL);
         // kprintf("/n lkholder is %s and curthread is %s", lock->lk_holder->t_name, curthread->t_name);
-        // KASSERT(lock->lk_holder == curthread);
-        // kprintf("/n aff lkholder is %d", lock->lk_holder);
+        // kprintf("\n aff lkhelddd is %d\n ", lock->lk_held);
 
         spinlock_acquire(&lock->lk_spin);
 
-        lock->lk_holder = NULL;
-        // lock->lk_held--;
-        // kprintf("\n\nhe %d \n", lock->lk_held);
-        KASSERT(lock->lk_held);
+        // if (CURCPU_EXISTS()) {
+        //         KASSERT(lock->lk_held);
+	// 	KASSERT(lock->lk_holder == curthread);
+	// }
 
+        lock->lk_holder = NULL;
         lock->lk_held = false;
 
         wchan_wakeone(lock->lk_wchan, &lock->lk_spin);
         spinlock_release(&lock->lk_spin);
-
-        (void)lock;  // suppress warning until code gets written
 }
 
 bool
@@ -240,9 +244,6 @@ lock_do_i_hold(struct lock *lock)
 {
         // Write this
 
-        // (void)lock;  // suppress warning until code gets written
-
-        // return true; // dummy until code gets written
         KASSERT(lock != NULL);
         // kprintf("\n\n in lockdoiso lock is %s\n\n", lock->lk_name);
 
@@ -276,6 +277,7 @@ cv_create(const char *name)
 
         // add stuff here as needed
         cv->cv_wchan = wchan_create(cv->cv_name);
+
 	if (cv->cv_wchan == NULL) {
 		kfree(cv->cv_name);
 		kfree(cv);
