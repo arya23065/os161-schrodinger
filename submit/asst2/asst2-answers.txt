@@ -6,11 +6,37 @@
     specified wait channel is obtained, and no other spinlock is held, the cpu is yielded to another process ie. yield to another
     runnable thread, and the current thread goes to sleep on the specified wait channel. 
 
-2. The function thread_switch handles a context switch. In particular, this function calls switchframe_switch which achieves the actual switch.
+2. The function thread_switch in src/kern/thread/thread.c handles a context switch. In particular, this function calls switchframe_switch 
+    which achieves the actual switch.
 
 3. S_RUN - thread is currently running and is occupying the cpu 
     S_READY - the thread is ready to run and is waiting to be yielded to / scheduled, in the queue - waiting for the cpu to become available
     S_SLEEP - the thread is currently sleeping and is waiting to be woken up so that it an be added to the runnable queue
     S_ZOMBIE - the thread is complete but not joined or detached - hasnt been freed / destroyed yet
 
-4. 
+4. Turning interrupts off means that nothing can stop/interrupt the current execution - only one thread can execute without yielding / switching.
+    This is accomplished by calling various functions in src/kern/thread/spl.c including splx and splhigh, which is achieved by calling cpu_irqoff() in 
+    src/kern/arch/mips/thread.c. It is important to turn off interrupts in thread subsystem code as an interrupt may interfere with the execution
+    of a thread resulting in failed execution including deadlocks and failed thread_sleeps. 
+
+5. thread_switch in src/kern/thread/thread.c is called when one thread is ready to wake another thread up. The current thread is put to sleep and placed on
+    the waitchannel WC (making is runnable) protected by spinlock LK, and its state is changed to NEWSTATE. Another thread to run is selected and switched to
+    and if there isnt one, the cpu idles till it gets one. After switching the frame, the wait channel is cleared, the new thread's state is set to S_RUN, 
+    the run queue is unlocked, the address space for the new thread is activated in the MMU, dead threads are cleaned up and interrupts are turned back on. 
+
+6. threadlist_remhead in src/kern/thread/threadlist.c chooses which thread to run next by setting the variable 'next' to the next thread, which thread_switch utilises
+
+7. threadlist_remhead in src/kern/thread/threadlist.c takes a look at the thread list (linked list - it has the pointer to the head node) and looks at the next 
+    node to find the next thread and then removes it from the list and returns it. Since it is a linked list, threads will be removed based on FIFO. 
+
+8. The hardware timer implements a Round-Robin scheduling pattern to schedule threads equally. The hardware independent function called on a timer interrupt
+    is hardclock, which can be found in src/kern/thread/clock.c.
+
+9. Each semaphore has a wait channel associated with it. wchan_sleep() is used while we are waiting for the semaphore to turn positive (be 'unlocked!') - we 
+    continuously loop, checking if the semaphore value is positive and if it isnt we call wchan_sleep() in order to put the current thread on the semaphore's
+    wait channel and try again. wchan_wakeone() is used when we are ready to 'unlock' the semaphore once the execution of the current thread is done - we 
+    wake up another thread from the semaphore's wait channel! All this can be found in src/kern/thread/synch.c
+
+10. In src/kern/thread/thread.c, we can see that the wait channel has a private list called wc_threads which is a linked list (and so follows FIFO). In wchan_sleep,
+    we can see that the wchan holds a spinlock while a thread is being put to the sleep, to ensure that the execution isn't interrupted,  so that another thread cannot 
+    attempt to awaken the first thread just as it is preparing to sleep, but before it is actually placed into the sleep queue.

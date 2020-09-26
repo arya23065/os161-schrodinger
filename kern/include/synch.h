@@ -79,7 +79,7 @@ struct lock {
         struct wchan *lk_wchan;
         struct spinlock lk_spin;
         volatile bool lk_held; 
-        struct thread *lk_holder;
+        volatile struct thread *lk_holder;
         // struct thread *lk_holder;
 };
 
