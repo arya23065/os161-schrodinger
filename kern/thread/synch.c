@@ -224,11 +224,9 @@ lock_release(struct lock *lock)
 {
         // Write this
         KASSERT(lock != NULL);
-        // kprintf("/n lkholder is %s and curthread is %s", lock->lk_holder->t_name, curthread->t_name);
-        // kprintf("\n aff lkhelddd is %d\n ", lock->lk_held);
-
-        if (!(lock->lk_held)) return;
-        // KASSERT(lock->lk_held);
+        KASSERT(curthread->t_in_interrupt == false);
+        KASSERT(lock->lk_held);
+        KASSERT(lock->lk_holder == curthread);
 
         // if (CURCPU_EXISTS()) {
                 // KASSERT(lock->lk_held);
@@ -237,8 +235,8 @@ lock_release(struct lock *lock)
 
         spinlock_acquire(&lock->lk_spin);
 
-        lock->lk_holder = NULL;
         lock->lk_held = false;
+        lock->lk_holder = NULL;
 
         wchan_wakeone(lock->lk_wchan, &lock->lk_spin);
         spinlock_release(&lock->lk_spin);
@@ -248,15 +246,10 @@ bool
 lock_do_i_hold(struct lock *lock)
 {
         // Write this
-
         KASSERT(lock != NULL);
-        // kprintf("\n\n in lockdoiso lock is %s\n\n", lock->lk_name);
+        KASSERT(curthread->t_in_interrupt == false);
 
-        // if (!CURCPU_EXISTS()) {
-	// 	return true;
-	// }
-
-	return (lock->lk_holder == curthread);
+	return (lock->lk_held && lock->lk_holder == curthread);
 }
 
 ////////////////////////////////////////////////////////////
@@ -312,15 +305,15 @@ cv_wait(struct cv *cv, struct lock *lock)
 {
         KASSERT(cv != NULL);
 	KASSERT(lock != NULL);
-        // kprintf("\n\nuuuuuuuuu lock is %d\n\n", lock->lk_held);
-        // kprintf("\n\nuuuuuujjjuuu lock is %s\n\n", lock->lk_holder->t_name);
-
-        // KASSERT(lock_do_i_hold(lock));  //constantly fails!!
+        KASSERT(curthread->t_in_interrupt == false);
+        KASSERT(lock_do_i_hold(lock));  //constantly fails!!
 
         spinlock_acquire(&cv->cv_spin);
         lock_release(lock);
         wchan_sleep(cv->cv_wchan, &cv->cv_spin);
-        spinlock_release(&cv->cv_spin);   
+        spinlock_release(&cv->cv_spin);  
+
+        lock_acquire(lock);            //????????ask about this
 }
 
 void
@@ -329,12 +322,12 @@ cv_signal(struct cv *cv, struct lock *lock)
         // Write this
         KASSERT(cv != NULL);
 	KASSERT(lock != NULL);
-
-        // KASSERT(lock_do_i_hold(lock)); - should fail cause its the lock tahts supposed to be acquired
+        KASSERT(curthread->t_in_interrupt == false);
+        KASSERT(lock_do_i_hold(lock)); //should fail cause its the lock tahts supposed to be acquired
 
         spinlock_acquire(&cv->cv_spin);
+        // lock_acquire(lock); //do I need this?????????????
         wchan_wakeone(cv->cv_wchan, &cv->cv_spin);
-        // lock_acquire(lock);
         spinlock_release(&cv->cv_spin);   
 }
 
@@ -344,11 +337,11 @@ cv_broadcast(struct cv *cv, struct lock *lock)
 	// Write this
         KASSERT(cv != NULL);
 	KASSERT(lock != NULL);
-
-        // KASSERT(lock_do_i_hold(lock)); - should fail cause its the lock tahts supposed to be acquired
+        KASSERT(curthread->t_in_interrupt == false);
+        KASSERT(lock_do_i_hold(lock)); //should fail cause its the lock tahts supposed to be acquired
 
         spinlock_acquire(&cv->cv_spin);
-        wchan_wakeall(cv->cv_wchan, &cv->cv_spin);
         // lock_acquire(lock);
+        wchan_wakeall(cv->cv_wchan, &cv->cv_spin);
         spinlock_release(&cv->cv_spin);   
 }
