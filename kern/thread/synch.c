@@ -154,8 +154,6 @@ lock_create(const char *name)
                 return NULL;
         }
 
-        // add stuff here as needed
-
         lock->lk_wchan = wchan_create(lock->lk_name);
 
 	if (lock->lk_wchan == NULL) {
@@ -174,13 +172,13 @@ lock_create(const char *name)
 void
 lock_destroy(struct lock *lock)
 {
-        KASSERT(lock != NULL);
+        KASSERT(lock != NULL);  
 
-        // add stuff here as needed
-
-        KASSERT(!(lock->lk_held)); // must be unlocked to be destroyed
+        /* Lock must be free to be destroyed*/
+        KASSERT(!(lock->lk_held));
         KASSERT(lock->lk_holder == NULL);
 
+        /* wchan_cleanup will assert if anyone's waiting on it */
         spinlock_cleanup(&lock->lk_spin);
 	wchan_destroy(lock->lk_wchan);
         kfree(lock->lk_name);
@@ -190,23 +188,22 @@ lock_destroy(struct lock *lock)
 void
 lock_acquire(struct lock *lock)
 {
-        // Write this
-
         KASSERT(lock != NULL);
-        KASSERT(curthread->t_in_interrupt == false);    // May not block in an interrupt handler.
 
-        // if (CURCPU_EXISTS()) {
-	// 	if (lock->lk_holder == curthread) {
-	// 		return;
-	// 	}
-	// }
+        /* The lock is already held by the current thread */
+        KASSERT(lock->lk_holder != curthread);
 
-
-        if (lock->lk_holder == curthread) return;
+        /*
+         * May not block in an interrupt handler.
+         *
+         * For robustness, always check, even if we can actually
+         * complete the acquire without blocking.
+         */
+        KASSERT(curthread->t_in_interrupt == false);
 
 	spinlock_acquire(&lock->lk_spin);
 
-        while (lock->lk_held) { // lock held, go to sleep, try again!!!
+        while (lock->lk_held) { 
 		wchan_sleep(lock->lk_wchan, &lock->lk_spin);
         }
 
@@ -215,38 +212,44 @@ lock_acquire(struct lock *lock)
 
         lock->lk_held = true; 
         lock->lk_holder = curthread; 
-        // kprintf("\n\nhe %s %d \n", lock->lk_name, lock->lk_held);
         spinlock_release(&lock->lk_spin);   
 }
 
 void
 lock_release(struct lock *lock)
 {
-        // Write this
         KASSERT(lock != NULL);
-        KASSERT(curthread->t_in_interrupt == false);
         KASSERT(lock->lk_held);
         KASSERT(lock->lk_holder == curthread);
 
-        // if (CURCPU_EXISTS()) {
-                // KASSERT(lock->lk_held);
-	// 	KASSERT(lock->lk_holder == curthread);
-	// }
+        /*
+         * May not block in an interrupt handler.
+         *
+         * For robustness, always check, even if we can actually
+         * complete the release without blocking.
+         */
+        KASSERT(curthread->t_in_interrupt == false);
 
         spinlock_acquire(&lock->lk_spin);
 
         lock->lk_held = false;
         lock->lk_holder = NULL;
-
         wchan_wakeone(lock->lk_wchan, &lock->lk_spin);
+
         spinlock_release(&lock->lk_spin);
 }
 
 bool
 lock_do_i_hold(struct lock *lock)
 {
-        // Write this
         KASSERT(lock != NULL);
+
+        /*
+         * May not block in an interrupt handler.
+         *
+         * For robustness, always check, even if we can actually
+         * complete lock_do_i_hold without blocking.
+         */
         KASSERT(curthread->t_in_interrupt == false);
 
 	return (lock->lk_held && lock->lk_holder == curthread);
@@ -273,7 +276,6 @@ cv_create(const char *name)
                 return NULL;
         }
 
-        // add stuff here as needed
         cv->cv_wchan = wchan_create(cv->cv_name);
 
 	if (cv->cv_wchan == NULL) {
@@ -283,7 +285,6 @@ cv_create(const char *name)
 	}
 
         spinlock_init(&cv->cv_spin);
-
         return cv;
 }
 
@@ -292,10 +293,9 @@ cv_destroy(struct cv *cv)
 {
         KASSERT(cv != NULL);
 
-        // add stuff here as needed
+        /* wchan_cleanup will assert if anyone's waiting on it */
         spinlock_cleanup(&cv->cv_spin);
 	wchan_destroy(cv->cv_wchan);
-
         kfree(cv->cv_name);
         kfree(cv);
 }
@@ -305,28 +305,40 @@ cv_wait(struct cv *cv, struct lock *lock)
 {
         KASSERT(cv != NULL);
 	KASSERT(lock != NULL);
+        KASSERT(lock_do_i_hold(lock));
+
+        /*
+         * May not block in an interrupt handler.
+         *
+         * For robustness, always check, even if we can actually
+         * complete cv_wait without blocking.
+         */
         KASSERT(curthread->t_in_interrupt == false);
-        KASSERT(lock_do_i_hold(lock));  //constantly fails!!
 
         spinlock_acquire(&cv->cv_spin);
+
         lock_release(lock);
         wchan_sleep(cv->cv_wchan, &cv->cv_spin);
-        spinlock_release(&cv->cv_spin);  
 
-        lock_acquire(lock);            //????????ask about this
+        spinlock_release(&cv->cv_spin);  
+        lock_acquire(lock);
 }
 
 void
 cv_signal(struct cv *cv, struct lock *lock)
 {
-        // Write this
         KASSERT(cv != NULL);
 	KASSERT(lock != NULL);
+
+        /*
+         * May not block in an interrupt handler.
+         *
+         * For robustness, always check, even if we can actually
+         * complete the signal without blocking.
+         */
         KASSERT(curthread->t_in_interrupt == false);
-        KASSERT(lock_do_i_hold(lock)); //should fail cause its the lock tahts supposed to be acquired
 
         spinlock_acquire(&cv->cv_spin);
-        // lock_acquire(lock); //do I need this?????????????
         wchan_wakeone(cv->cv_wchan, &cv->cv_spin);
         spinlock_release(&cv->cv_spin);   
 }
@@ -334,14 +346,18 @@ cv_signal(struct cv *cv, struct lock *lock)
 void
 cv_broadcast(struct cv *cv, struct lock *lock)
 {
-	// Write this
         KASSERT(cv != NULL);
 	KASSERT(lock != NULL);
+
+        /*
+         * May not block in an interrupt handler.
+         *
+         * For robustness, always check, even if we can actually
+         * complete the broadcast without blocking.
+         */
         KASSERT(curthread->t_in_interrupt == false);
-        KASSERT(lock_do_i_hold(lock)); //should fail cause its the lock tahts supposed to be acquired
 
         spinlock_acquire(&cv->cv_spin);
-        // lock_acquire(lock);
         wchan_wakeall(cv->cv_wchan, &cv->cv_spin);
         spinlock_release(&cv->cv_spin);   
 }
