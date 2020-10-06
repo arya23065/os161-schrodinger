@@ -19,6 +19,7 @@ struct lock *ropes_left_lock;
 
 struct cv *escape_cv;
 struct lock *escape_lock;
+int action_threads_left; // accessed using escape lock
 bool escaped; 
 
 struct rope {
@@ -76,6 +77,7 @@ dandelion(void *p, unsigned long arg)
 
 	lock_acquire(escape_lock);
 	cv_signal(escape_cv, escape_lock);
+	action_threads_left--;
 	lock_release(escape_lock);
 
 	kprintf("Dandelion thread done\n");
@@ -90,36 +92,40 @@ marigold(void *p, unsigned long arg)
 	(void)p;
 	(void)arg;
 
-	// kprintf("Marigold thread starting\n");
+	kprintf("Marigold thread starting\n");
 
 	/* Implement this function */
 		// generate random random balloon stake index,
 			// check that one end is already severed before cutting
 
-	// thread_yield();
+	thread_yield();
 
 	/* Implement this function */
-	// while (ropes_left > 0) {
-	// 	int stake_index = random() % NROPES;	// generate random random balloon hook index,
+	while (ropes_left > 0) {
+		int stake_index = random() % NROPES;	// generate random random balloon hook index,
 
-	// 	lock_acquire(rope_array[stake_index].rope_lock);
+		lock_acquire(rope_array[stake_index].rope_lock);
 
-	// 	if (ropes[stake_index].rope_severed) {
-	// 		lock_release(rope_array[stake_index].rope_lock);
-	// 	} else {
-	// 		lock_acquire(ropes_left_lock);
-	// 		rope_array[stake_index].rope_hook = -1; // set to -1 to indicate severed 
-	// 		rope_array[stake_index].rope_severed = true;
-	// 		ropes_left--;
-	// 		kprintf("Marigold severed rope %d", stake_index);
-	// 		lock_release(rope_array[stake_index].rope_lock);
-	// 		lock_release(ropes_left_lock);
-	// 	}
+		if (rope_array[stake_index].rope_severed) {
+			lock_release(rope_array[stake_index].rope_lock);
+		} else {
+			rope_array[stake_index].rope_stake = -1; // set to -1 to indicate severed 
+			rope_array[stake_index].rope_severed = true;
+			lock_acquire(ropes_left_lock);
+			ropes_left--;
+			lock_release(ropes_left_lock);
+			kprintf("Marigold severed rope %d\n", stake_index);
+			lock_release(rope_array[stake_index].rope_lock);
+		}
+	}
 
-	// }
+	lock_acquire(escape_lock);
+	action_threads_left--;
+	lock_release(escape_lock);
 
-	// kprintf("Marigold  thread done");
+	kprintf("Marigold thread done\n");
 
+	thread_exit();
 
 }
 
@@ -130,9 +136,12 @@ flowerkiller(void *p, unsigned long arg)
 	(void)p;
 	(void)arg;
 
+	thread_yield();
+
 	// kprintf("Lord FlowerKiller thread starting\n");
 
 	/* Implement this function */
+	thread_exit();
 }
 
 static
@@ -144,10 +153,12 @@ balloon(void *p, unsigned long arg)
 
 	kprintf("Balloon thread starting\n");
 	//keep checking that balloon is free
-	//free memory
 	lock_acquire(escape_lock); 
 	cv_wait(escape_cv, escape_lock); 	// dandelion does the signalling
 	lock_release(escape_lock);
+	
+	// wait until all locks have been released
+	while (action_threads_left != 0) {}
 	escaped = true;
 	
 	kprintf("Balloon freed and Prince Dandelion escapes!\n");
@@ -194,6 +205,7 @@ airballoon(int nargs, char **args)
 	escape_lock = lock_create("Escape lock");
 	escape_cv = cv_create("Escape cv");
 	escaped = false;
+	action_threads_left = 2; // marigold, dandelion and flowerkiller
 
 
 	err = thread_fork("Marigold Thread",
@@ -233,10 +245,11 @@ done:
 	// cv_wait(escape_cv, escape_lock);
 	// lock_release(escape_lock);
 
-	
+	// kprintf("reached here\n");
 	for (int i = 0; i < NROPES; i++) {
+		// kprintf("lock %d is held - %d\n", i, rope_array[i].rope_lock->lk_held);
 		lock_destroy(rope_array[i].rope_lock); 
-		// ropes[i] = NULL;
+		// rope_array[i] = NULL;
 	}
 	// kfree(ropes);
 	// rope_array = NULL
