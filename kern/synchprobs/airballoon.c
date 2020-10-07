@@ -211,33 +211,56 @@ flowerkiller(void *p, unsigned long arg)
 			lock_acquire(stake_array[stake_index_1].stake_lock);
 			lock_acquire(stake_array[stake_index_2].stake_lock);
 
-			if (rope_array[stake_array[stake_index_1].rope_index].rope_severed || rope_array[stake_array[stake_index_1].rope_index].rope_severed ) {
-				// lock_release(rope_lock_1);
-				// lock_release(rope_lock_2);
-				// lock_release(stake_lock_1);
-				// lock_release(stake_lock_2);
-				lock_release(stake_array[stake_index_1].stake_lock);
-				lock_release(stake_array[stake_index_2].stake_lock);
+			struct stake *stake_1 = &(stake_array[stake_index_1]);
+			struct stake *stake_2 = &(stake_array[stake_index_2]);
+
+			struct lock *stake_lock_1 = stake_1->stake_lock;
+			struct lock *stake_lock_2 = stake_2->stake_lock;
+
+			int rope_index_1 = stake_1->rope_index;
+			int rope_index_2 = stake_2->rope_index;
+
+			lock_acquire(rope_array[rope_index_1].rope_lock);
+			lock_acquire(rope_array[rope_index_2].rope_lock);
+
+			struct rope *rope_1 = &(rope_array[rope_index_1]);
+			struct rope *rope_2 = &(rope_array[rope_index_2]);
+
+			struct lock *rope_lock_1 = rope_1->rope_lock;
+			struct lock *rope_lock_2 = rope_2->rope_lock;
+
+			// if (rope_array[stake_array[stake_index_1].rope_index].rope_severed || rope_array[stake_array[stake_index_1].rope_index].rope_severed ) {
+			if (rope_1->rope_severed || rope_2->rope_severed){
+				lock_release(rope_lock_1);
+				lock_release(rope_lock_2);
+				lock_release(stake_lock_1);
+				lock_release(stake_lock_2);
+				// lock_release(stake_array[stake_index_1].stake_lock);
+				// lock_release(stake_array[stake_index_2].stake_lock);
 
 				continue;
 			}
 			else {
-				// lock_release(rope_lock_1);
-				// lock_release(rope_lock_2);
+				lock_release(rope_lock_1);
+				lock_release(rope_lock_2);
 
 				// lock_acquire(stake_lock_1);
 				// lock_acquire(stake_lock_2);
 
-				kprintf("Lord FlowerKiller switched rope %d from stake %d to stake %d\n", stake_array[stake_index_1].rope_index, stake_index_1, stake_index_2);
-				kprintf("Lord FlowerKiller switched rope %d from stake %d to stake %d\n", stake_array[stake_index_2].rope_index, stake_index_2, stake_index_1);
+				// kprintf("Lord FlowerKiller switched rope %d from stake %d to stake %d\n", stake_array[stake_index_1].rope_index, stake_index_1, stake_index_2);
+				// kprintf("Lord FlowerKiller switched rope %d from stake %d to stake %d\n", stake_array[stake_index_2].rope_index, stake_index_2, stake_index_1);
+
+				kprintf("Lord FlowerKiller switched rope %d from stake %d to stake %d\n", rope_index_1, stake_index_1, stake_index_2);
+				kprintf("Lord FlowerKiller switched rope %d from stake %d to stake %d\n", rope_index_2, stake_index_2, stake_index_1);
 
 				int temp = stake_array[stake_index_1].rope_index;
 				stake_array[stake_index_1].rope_index = stake_array[stake_index_2].rope_index;
 				stake_array[stake_index_2].rope_index = temp;
 
-				lock_release(stake_array[stake_index_1].stake_lock);
-				lock_release(stake_array[stake_index_2].stake_lock);
-
+				// lock_release(stake_array[stake_index_1].stake_lock);
+				// lock_release(stake_array[stake_index_2].stake_lock);
+				lock_release(stake_lock_1);
+				lock_release(stake_lock_2);
 								// lock_release(rope_array[rope_index_1].rope_lock);
 				// lock_release(rope_array[rope_index_2].rope_lock);
 				thread_yield();
