@@ -64,7 +64,7 @@ dandelion(void *p, unsigned long arg)
 	(void)arg;
 
 	kprintf("Dandelion thread starting\n");
-	thread_yield();
+	// thread_yield();
 	// kprintf("%d dendelion \n", rope_array[2].rope_stake);
 		// kprintf("%d dendelion num\n", num);
 
@@ -116,7 +116,7 @@ marigold(void *p, unsigned long arg)
 		// generate random random balloon stake index,
 			// check that one end is already severed before cutting
 
-	thread_yield();
+	// thread_yield();
 
 	/* Implement this function */
 	while (ropes_left > 0) {
@@ -167,13 +167,13 @@ flowerkiller(void *p, unsigned long arg)
 	(void)p;
 	(void)arg;
 
-	thread_yield();
+	// thread_yield();
 
 	kprintf("Lord FlowerKiller thread starting\n");
 
 	/* Implement this function */
 
-	thread_yield();
+	// thread_yield();
 
 	//DOES FLOWERKILLER ONLY SWITCH UNSEVERED ROPES?????????????????????????????
 
@@ -185,46 +185,61 @@ flowerkiller(void *p, unsigned long arg)
 
 		if (stake_index_1 != stake_index_2) {
 
-			lock_acquire(rope_array[stake_array[stake_index_1].rope_index].rope_lock);
-			lock_acquire(rope_array[stake_array[stake_index_2].rope_index].rope_lock);
+			// lock_acquire(rope_array[stake_array[stake_index_1].rope_index].rope_lock);
+			// lock_acquire(rope_array[stake_array[stake_index_2].rope_index].rope_lock);
 
-			struct stake stake_1 = stake_array[stake_index_1];
-			struct stake stake_2 = stake_array[stake_index_2];
+			// struct stake *stake_1 = &(stake_array[stake_index_1]);
+			// struct stake *stake_2 = &(stake_array[stake_index_2]);
 
-			struct lock *stake_lock_1 = stake_1.stake_lock;
-			struct lock *stake_lock_2 = stake_2.stake_lock;
+			// struct lock *stake_lock_1 = stake_1->stake_lock;
+			// struct lock *stake_lock_2 = stake_2->stake_lock;
 
-			int rope_index_1 = stake_1.rope_index;
-			int rope_index_2 = stake_2.rope_index;
+			// int rope_index_1 = stake_1->rope_index;
+			// int rope_index_2 = stake_2->rope_index;
 
-			struct rope rope_1 = rope_array[rope_index_1]; 
-			struct rope rope_2 = rope_array[rope_index_2]; 
+			// struct rope *rope_1 = &(rope_array[rope_index_1]); 
+			// struct rope *rope_2 = &(rope_array[rope_index_2]); 
 
-			struct lock *rope_lock_1 = rope_1.rope_lock;
-			struct lock *rope_lock_2 = rope_2.rope_lock;
+			// struct lock *rope_lock_1 = rope_1->rope_lock;
+			// struct lock *rope_lock_2 = rope_2->rope_lock;
+			lock_acquire(stake_array[stake_index_1].stake_lock);
 
-			if (rope_1.rope_severed || rope_2.rope_severed) {
-				lock_release(rope_lock_1);
-				lock_release(rope_lock_2);
-			} else {
-				lock_release(rope_lock_1);
-				lock_release(rope_lock_2);		
+			if (rope_array[stake_array[stake_index_1].rope_index].rope_severed ) {
+				// lock_release(rope_lock_1);
+				// lock_release(rope_lock_2);
+				// lock_release(stake_lock_1);
+				// lock_release(stake_lock_2);
+				lock_release(stake_array[stake_index_1].stake_lock);
+				continue;
+			} 
+			else {
+				lock_acquire(stake_array[stake_index_2].stake_lock);
 
-				lock_acquire(stake_lock_1);
-				lock_acquire(stake_lock_2);
+				if (rope_array[stake_array[stake_index_1].rope_index].rope_severed) {
+				lock_release(stake_array[stake_index_1].stake_lock);
+				lock_release(stake_array[stake_index_2].stake_lock);
+				continue;
+				} else {
+				// lock_release(rope_lock_1);	
+				// lock_release(rope_lock_2);		
+
+				// lock_acquire(stake_lock_1);
+				// lock_acquire(stake_lock_2);
 				
-				kprintf("Lord FlowerKiller switched rope %d from stake %d to stake %d\n", rope_index_1, stake_index_1, stake_index_2);	
+				kprintf("Lord FlowerKiller switched rope %d from stake %d to stake %d\n", stake_array[stake_index_1].rope_index, stake_index_1, stake_index_2);	
 
-				int temp = rope_index_1;
-				rope_index_1 = rope_index_2; 
-				rope_index_2 = temp;
+				int temp = stake_array[stake_index_1].rope_index;
+				stake_array[stake_index_1].rope_index = stake_array[stake_index_2].rope_index; 
+				stake_array[stake_index_2].rope_index = temp;
 
-				lock_release(stake_lock_1);
-				lock_release(stake_lock_2);
+				lock_release(stake_array[stake_index_1].stake_lock);
+				lock_release(stake_array[stake_index_2].stake_lock);
 
 								// lock_release(rope_array[rope_index_1].rope_lock);
 				// lock_release(rope_array[rope_index_2].rope_lock);
 				thread_yield();
+				}
+				
 			}
 
 		}
@@ -254,7 +269,10 @@ balloon(void *p, unsigned long arg)
 	lock_release(escape_lock);
 	
 	// wait until all locks have been released
-	while (action_threads_left != 0) {}
+	kprintf("%d action threads left\n", action_threads_left);
+	while (action_threads_left != 0) {
+		thread_yield();
+	}
 	escaped = true;
 	
 	kprintf("Balloon freed and Prince Dandelion escapes!\n");
@@ -304,8 +322,8 @@ airballoon(int nargs, char **args)
 
 	escape_cv = cv_create("Escape cv");
 	escaped = false;
-	// action_threads_left = 2 + N_LORD_FLOWERKILLER; // marigold, dandelion and flowerkiller
-		action_threads_left = 3; // marigold, dandelion and flowerkiller
+	action_threads_left = 2 + N_LORD_FLOWERKILLER; // marigold, dandelion and flowerkiller
+		// action_threads_left = 3; // marigold, dandelion and flowerkiller
 
 
 	err = thread_fork("Marigold Thread",
@@ -318,8 +336,8 @@ airballoon(int nargs, char **args)
 	if(err)
 		goto panic;
 
-	// for (i = 0; i < N_LORD_FLOWERKILLER; i++) {
-			for (i = 0; i < 1; i++) {
+	for (i = 0; i < N_LORD_FLOWERKILLER; i++) {
+			// for (i = 0; i < 1; i++) {
 		err = thread_fork("Lord FlowerKiller Thread",
 				  NULL, flowerkiller, NULL, 0);
 		if(err)
