@@ -215,7 +215,7 @@ flowerkiller(void *p, unsigned long arg)
 			else {
 				lock_acquire(stake_array[stake_index_2].stake_lock);
 
-				if (rope_array[stake_array[stake_index_1].rope_index].rope_severed) {
+				if (rope_array[stake_array[stake_index_1].rope_index].rope_severed || rope_array[stake_array[stake_index_1].rope_index].rope_severed ) {
 				lock_release(stake_array[stake_index_1].stake_lock);
 				lock_release(stake_array[stake_index_2].stake_lock);
 				continue;
