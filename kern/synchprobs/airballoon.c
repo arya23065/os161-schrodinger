@@ -15,18 +15,18 @@ static int ropes_left = NROPES;
 /* Data structures for rope mappings */
 
 /* Implement this! */
-struct lock *ropes_left_lock; 
+struct lock *ropes_left_lock;
 
 struct cv *escape_cv;
 struct lock *escape_lock;
 int action_threads_left; // accessed using escape lock
-bool escaped; 
+bool escaped;
 
 struct rope {
 	struct lock *rope_lock;
-	// volatile int rope_stake; // ground - Marigold - -1 indicates that it is not connected -  Lord Flowerkiller only switches this 
+	// volatile int rope_stake; // ground - Marigold - -1 indicates that it is not connected -  Lord Flowerkiller only switches this
 	// volatile int rope_hook; //connected to balloon - Dandelion
-	volatile bool rope_severed; 
+	volatile bool rope_severed;
 };
 
 struct stake{
@@ -74,7 +74,7 @@ dandelion(void *p, unsigned long arg)
 
 		lock_acquire(rope_array[hook_index].rope_lock);
 
-		struct rope *rope = &(rope_array[hook_index]); 
+		struct rope *rope = &(rope_array[hook_index]);
 		struct lock *rope_lock = rope->rope_lock;
 
 		if (rope->rope_severed) {
@@ -197,39 +197,42 @@ flowerkiller(void *p, unsigned long arg)
 			// int rope_index_1 = stake_1->rope_index;
 			// int rope_index_2 = stake_2->rope_index;
 
-			// struct rope *rope_1 = &(rope_array[rope_index_1]); 
-			// struct rope *rope_2 = &(rope_array[rope_index_2]); 
+			// struct rope *rope_1 = &(rope_array[rope_index_1]);
+			// struct rope *rope_2 = &(rope_array[rope_index_2]);
 
 			// struct lock *rope_lock_1 = rope_1->rope_lock;
 			// struct lock *rope_lock_2 = rope_2->rope_lock;
-			lock_acquire(stake_array[stake_index_1].stake_lock);
+			if (stake_index_1 > stake_index_2) {
+				int smaller = stake_index_2; 
+				stake_index_2 = stake_index_1;
+				stake_index_1 = smaller;
+			}
 
-			if (rope_array[stake_array[stake_index_1].rope_index].rope_severed ) {
+			lock_acquire(stake_array[stake_index_1].stake_lock);
+			lock_acquire(stake_array[stake_index_2].stake_lock);
+
+			if (rope_array[stake_array[stake_index_1].rope_index].rope_severed || rope_array[stake_array[stake_index_1].rope_index].rope_severed ) {
 				// lock_release(rope_lock_1);
 				// lock_release(rope_lock_2);
 				// lock_release(stake_lock_1);
 				// lock_release(stake_lock_2);
 				lock_release(stake_array[stake_index_1].stake_lock);
-				continue;
-			} 
-			else {
-				lock_acquire(stake_array[stake_index_2].stake_lock);
-
-				if (rope_array[stake_array[stake_index_1].rope_index].rope_severed || rope_array[stake_array[stake_index_1].rope_index].rope_severed ) {
-				lock_release(stake_array[stake_index_1].stake_lock);
 				lock_release(stake_array[stake_index_2].stake_lock);
+
 				continue;
-				} else {
-				// lock_release(rope_lock_1);	
-				// lock_release(rope_lock_2);		
+			}
+			else {
+				// lock_release(rope_lock_1);
+				// lock_release(rope_lock_2);
 
 				// lock_acquire(stake_lock_1);
 				// lock_acquire(stake_lock_2);
-				
-				kprintf("Lord FlowerKiller switched rope %d from stake %d to stake %d\n", stake_array[stake_index_1].rope_index, stake_index_1, stake_index_2);	
+
+				kprintf("Lord FlowerKiller switched rope %d from stake %d to stake %d\n", stake_array[stake_index_1].rope_index, stake_index_1, stake_index_2);
+				kprintf("Lord FlowerKiller switched rope %d from stake %d to stake %d\n", stake_array[stake_index_2].rope_index, stake_index_2, stake_index_1);
 
 				int temp = stake_array[stake_index_1].rope_index;
-				stake_array[stake_index_1].rope_index = stake_array[stake_index_2].rope_index; 
+				stake_array[stake_index_1].rope_index = stake_array[stake_index_2].rope_index;
 				stake_array[stake_index_2].rope_index = temp;
 
 				lock_release(stake_array[stake_index_1].stake_lock);
@@ -238,8 +241,7 @@ flowerkiller(void *p, unsigned long arg)
 								// lock_release(rope_array[rope_index_1].rope_lock);
 				// lock_release(rope_array[rope_index_2].rope_lock);
 				thread_yield();
-				}
-				
+
 			}
 
 		}
@@ -264,17 +266,17 @@ balloon(void *p, unsigned long arg)
 
 	kprintf("Balloon thread starting\n");
 	//keep checking that balloon is free
-	lock_acquire(escape_lock); 
+	lock_acquire(escape_lock);
 	cv_wait(escape_cv, escape_lock); 	// dandelion does the signalling
 	lock_release(escape_lock);
-	
+
 	// wait until all locks have been released
 	kprintf("%d action threads left\n", action_threads_left);
 	while (action_threads_left != 0) {
 		thread_yield();
 	}
 	escaped = true;
-	
+
 	kprintf("Balloon freed and Prince Dandelion escapes!\n");
 
 	kprintf("Balloon thread done\n");
@@ -297,9 +299,9 @@ airballoon(int nargs, char **args)
 	(void)args;
 	(void)ropes_left;
 
-	// intialise global struct and vairbales - have the lock before you access the rope - each rope has sa lock. diff stakes locks 
+	// intialise global struct and vairbales - have the lock before you access the rope - each rope has sa lock. diff stakes locks
 
-	// ropes = (struct rope*)kmalloc(NROPES * sizeof(struct rope));	// kmalloc for malloc requested by kernel 
+	// ropes = (struct rope*)kmalloc(NROPES * sizeof(struct rope));	// kmalloc for malloc requested by kernel
 
 	for (int i = 0; i < NROPES; i++){
 		// rope_array[i].rope_lock = lock_create("Rope " + i);
@@ -367,7 +369,7 @@ done:
 	// kprintf("reached here\n");
 	for (int i = 0; i < NROPES; i++) {
 		// kprintf("lock %d is held - %d\n", i, rope_array[i].rope_lock->lk_held);
-		lock_destroy(rope_array[i].rope_lock); 
+		lock_destroy(rope_array[i].rope_lock);
 		lock_destroy(stake_array[i].stake_lock);
 		// rope_array[i] = NULL;
 	}
