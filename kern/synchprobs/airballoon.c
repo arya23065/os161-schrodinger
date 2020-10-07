@@ -15,11 +15,13 @@ static int ropes_left = NROPES;
 /* Data structures for rope mappings */
 
 struct lock *ropes_left_lock;
+
 struct cv *escape_cv;
 struct lock *escape_lock;
-
-int action_threads_left;
 bool escaped;
+
+/*Marigold, Dandelion, and Flowerkillers are action threads*/
+int action_threads_left;
 
 struct rope {
 	struct lock *rope_lock;
@@ -32,17 +34,16 @@ struct stake{
 };
 
 struct rope rope_array[NROPES];
+
+/*Each element of the array indicated the rope it is connected to */
 volatile int hook_array[NROPES];
+
+/*Each element of the array corresponds to the stake, which includes the rope it is connected to through rope_index
+ 	within the stake struct */
 struct stake stake_array[NROPES];
 
 
 /* Synchronization primitives */
-
-/*
- * Describe your design and any invariants or locking protocols
- * that must be maintained. Explain the exit conditions. How
- * do all threads know when they are done?
- */
 
 static
 void
@@ -78,6 +79,7 @@ dandelion(void *p, unsigned long arg)
 		}
 	}
 
+	/*Dandelion signals when all ropes have been cut, to wake-up the balloon thread*/
 	lock_acquire(escape_lock);
 	cv_signal(escape_cv, escape_lock);
 	action_threads_left--;
@@ -158,6 +160,7 @@ flowerkiller(void *p, unsigned long arg)
 
 		if (stake_index_1 != stake_index_2) {
 
+			/*In order to prevent deadlocks, stake_index_1 is always the less than stake_index_2*/
 			if (stake_index_1 > stake_index_2) {
 				int smaller = stake_index_2; 
 				stake_index_2 = stake_index_1;
@@ -202,6 +205,7 @@ flowerkiller(void *p, unsigned long arg)
 				kprintf("Lord FlowerKiller switched rope %d from stake %d to stake %d\n", rope_index_1, stake_index_1, stake_index_2);
 				kprintf("Lord FlowerKiller switched rope %d from stake %d to stake %d\n", rope_index_2, stake_index_2, stake_index_1);
 
+				/*Switching the ropes connected to each stake*/
 				int temp = stake_array[stake_index_1].rope_index;
 				stake_array[stake_index_1].rope_index = stake_array[stake_index_2].rope_index;
 				stake_array[stake_index_2].rope_index = temp;
@@ -233,6 +237,7 @@ balloon(void *p, unsigned long arg)
 
 	kprintf("Balloon thread starting\n");
 
+	/*Wait for dandelion to signal when all ropes are cut*/
 	lock_acquire(escape_lock);
 	cv_wait(escape_cv, escape_lock);
 	lock_release(escape_lock);
