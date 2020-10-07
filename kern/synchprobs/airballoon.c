@@ -24,12 +24,19 @@ bool escaped;
 
 struct rope {
 	struct lock *rope_lock;
-	volatile int rope_stake; // ground - Marigold - -1 indicates that it is not connected -  Lord Flowerkiller only switches this 
-	volatile int rope_hook; //connected to balloon - Dandelion
+	// volatile int rope_stake; // ground - Marigold - -1 indicates that it is not connected -  Lord Flowerkiller only switches this 
+	// volatile int rope_hook; //connected to balloon - Dandelion
 	volatile bool rope_severed; 
 };
 
 struct rope rope_array[NROPES];
+volatile int hook_array[NROPES];
+volatile int stake_array[NROPES];
+
+struct lock *hook_lock;	//lock associated with hookarray
+struct lock *stake_lock;
+
+
 // int num;
 
 
@@ -57,20 +64,22 @@ dandelion(void *p, unsigned long arg)
 
 	/* Implement this function */
 	while (ropes_left > 0) {
-		int hook_index = random() % NROPES;	// generate random random balloon hook index,
+		int rope_index = random() % NROPES;	// generate random random balloon hook index,
 
-		lock_acquire(rope_array[hook_index].rope_lock);
+		lock_acquire(rope_array[rope_index].rope_lock);
 
-		if (rope_array[hook_index].rope_severed) {
-			lock_release(rope_array[hook_index].rope_lock);
+		if (rope_array[rope_index].rope_severed) {
+			lock_release(rope_array[rope_index].rope_lock);
 		} else {
-			rope_array[hook_index].rope_hook = -1; // set to -1 to indicate severed 
-			rope_array[hook_index].rope_severed = true;
+			lock_acquire(hook_lock);
+			hook_array[rope_index] = -1; // set to -1 to indicate severed 
+			lock_release(hook_lock);
+			rope_array[rope_index].rope_severed = true;
 			lock_acquire(ropes_left_lock);
 			ropes_left--;
 			lock_release(ropes_left_lock);
-			kprintf("Dandelion severed rope %d\n", hook_index);
-			lock_release(rope_array[hook_index].rope_lock);
+			kprintf("Dandelion severed rope %d\n", rope_index);
+			lock_release(rope_array[rope_index].rope_lock);
 		}
 
 	}
@@ -102,20 +111,22 @@ marigold(void *p, unsigned long arg)
 
 	/* Implement this function */
 	while (ropes_left > 0) {
-		int stake_index = random() % NROPES;	// generate random random balloon hook index,
+		int rope_index = random() % NROPES;	// generate random random balloon hook index,
 
-		lock_acquire(rope_array[stake_index].rope_lock);
+		lock_acquire(rope_array[rope_index].rope_lock);
 
-		if (rope_array[stake_index].rope_severed) {
-			lock_release(rope_array[stake_index].rope_lock);
+		if (rope_array[rope_index].rope_severed) {
+			lock_release(rope_array[rope_index].rope_lock);
 		} else {
-			rope_array[stake_index].rope_stake = -1; // set to -1 to indicate severed 
-			rope_array[stake_index].rope_severed = true;
+			lock_acquire(stake_lock);
+			stake_array[rope_index] = -1; // set to -1 to indicate severed 
+			lock_release(stake_lock);
+			rope_array[rope_index].rope_severed = true;
 			lock_acquire(ropes_left_lock);
 			ropes_left--;
 			lock_release(ropes_left_lock);
-			kprintf("Marigold severed rope %d\n", stake_index);
-			lock_release(rope_array[stake_index].rope_lock);
+			kprintf("Marigold severed rope %d\n", rope_index);
+			lock_release(rope_array[rope_index].rope_lock);
 		}
 	}
 
@@ -141,6 +152,8 @@ flowerkiller(void *p, unsigned long arg)
 	// kprintf("Lord FlowerKiller thread starting\n");
 
 	/* Implement this function */
+
+
 	thread_exit();
 }
 
@@ -190,8 +203,8 @@ airballoon(int nargs, char **args)
 	for (int i = 0; i < NROPES; i++){
 		// rope_array[i].rope_lock = lock_create("Rope " + i);
 		rope_array[i].rope_lock = lock_create("Rope");
-		rope_array[i].rope_stake = i;
-		rope_array[i].rope_hook = i;
+		hook_array[i] = i;
+		stake_array[i] = i;
 		rope_array[i].rope_severed = false;
 	}
 
@@ -203,6 +216,9 @@ airballoon(int nargs, char **args)
 
 	ropes_left_lock = lock_create("Ropes left lock");
 	escape_lock = lock_create("Escape lock");
+	hook_lock = lock_create("Escape lock");
+	stake_lock = lock_create("Escape lock");
+
 	escape_cv = cv_create("Escape cv");
 	escaped = false;
 	action_threads_left = 2; // marigold, dandelion and flowerkiller
@@ -259,6 +275,8 @@ done:
 
 	lock_destroy(ropes_left_lock);
 	lock_destroy(escape_lock);
+	lock_destroy(hook_lock);
+	lock_destroy(stake_lock);
 	cv_destroy(escape_cv);
 
 	kprintf("Main thread done\n");
