@@ -1,0 +1,17 @@
+1. ELF magic numbers are:
+0x7f, 'E', 'L', 'F'. These can be found in kern/include/elf.h, and are 
+stored in e_ident[EI_MAG0...3]
+
+2. UIO_USERISPACE is for process code, and UIO_USERSPACE is for process data.
+We use UIO_USERISPACE when the memory block encapsulated by a uio is in user 
+space and is executable. We can see this in kern/syscall/loadelf.c.
+We use IUO_SYSSPACE for source/destination memory blocks in kernel space.
+
+3. The file that is read is stored in memory starting at vaddr (kern/syscall/loadelf.c).
+vaddr is stored in the uio struct that load_segment() creates, so it can be allocated on the stack
+in load_segment().
+
+4. Once we have loaded the executable, we don't need the file reference anymore. Moreover, if we don't
+call vfs_close() before switching to usermode, other processes won't be able to execute the same program.
+
+5. 
