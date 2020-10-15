@@ -111,6 +111,46 @@ syscall(struct trapframe *tf)
 
 	    /* Add stuff here */
 
+		// case SYS_open:
+		// err = sys_open((userptr_t)tf->tf_a0,
+		// 		 (userptr_t)tf->tf_a1);
+		// break;
+
+		// case SYS_read:
+		// err = sys_read((userptr_t)tf->tf_a0,
+		// 		 (userptr_t)tf->tf_a1);
+		// break;
+
+		// case SYS_write:
+		// err = sys_write((userptr_t)tf->tf_a0,
+		// 		 (userptr_t)tf->tf_a1);
+		// break;
+
+		// case SYS_lseek:
+		// err = sys_lseek((userptr_t)tf->tf_a0,
+		// 		 (userptr_t)tf->tf_a1);
+		// break;
+
+		// case SYS_close:
+		// err = sys_close((userptr_t)tf->tf_a0,
+		// 		 (userptr_t)tf->tf_a1);
+		// break;
+
+		// case SYS_dup2:
+		// err = sys_dup2((userptr_t)tf->tf_a0,
+		// 		 (userptr_t)tf->tf_a1);
+		// break;
+
+		case SYS_chdir:
+		err = sys_chdir((userptr_t)tf->tf_a0,
+				 (userptr_t)tf->tf_a1);
+		break;
+
+		case SYS___getcwd:
+		err = sys_getcwd((userptr_t)tf->tf_a0,
+				 (userptr_t)tf->tf_a1);
+		break;
+
 	    default:
 		kprintf("Unknown syscall %d\n", callno);
 		err = ENOSYS;
