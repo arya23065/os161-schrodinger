@@ -17,7 +17,7 @@ struct open_filetable {
 struct open_filetable* open_filetable_create(); 
 int open_filetable_destroy(struct open_filetable *open_filetable);
 int open_filetable_init(struct open_filetable *open_filetable); 
-int open_filetable_add(struct filetable *open_filetable, char *path, int openflags, mode_t mode); 
+int open_filetable_add(struct open_filetable *open_filetable, char *path, int openflags, mode_t mode); 
 
 
 

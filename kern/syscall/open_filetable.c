@@ -101,7 +101,7 @@ open_filetable_init(struct filetable *open_filetable) {
 
 /* Returns index in open_filetable of new file*/
 int 
-open_filetable_add(struct filetable *open_filetable, char *path, int openflags, mode_t mode) {
+open_filetable_add(struct open_filetable *open_filetable, char *path, int openflags, mode_t mode) {
     KASSERT(open_filetable != NULL); 
 
     //shouldnt have to pass in openfiletable cause there's only one!!!!!!!!!!!!!!!!

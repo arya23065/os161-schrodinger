@@ -87,14 +87,9 @@ proc_create(const char *name)
 
 	/* Open filetable */
 	// proc->p_file_descriptor_table = NULL;
-	proc->max_index_occupied = -1; 
+	// proc->max_index_occupied = -1; 
 
-	// but should not create a new one each time should just get open file table!!!!!!!!!!
-	proc->kernel_open_filetable = open_filetable_create(); 
-
-	if (name == "[kernel]") {
-		open_filetable_init(proc->kernel_open_filetable);
-	} 
+	proc->p_open_filetable = NULL; 
 
 	return proc;
 }
@@ -177,6 +172,7 @@ proc_destroy(struct proc *proc)
 			proc->p_addrspace = NULL;
 		}
 		as_destroy(as);
+
 	}
 
 	// filetable_destroy(proc->p_filetable)
@@ -188,6 +184,8 @@ proc_destroy(struct proc *proc)
 
 	threadarray_cleanup(&proc->p_threads);
 	spinlock_cleanup(&proc->p_lock);
+
+	open_filetable_destroy(proc->p_open_filetable);
 
 	kfree(proc->p_name);
 	kfree(proc);
@@ -243,21 +241,12 @@ proc_create_runprogram(const char *name)
 	// newproc->p_filetable = filetable_create();
 	// filetable_init(newproc->p_filetable);
 
-	lock_acquire(open_filetable); 
+	lock_acquire(newproc->p_open_filetable->open_filetable_lock); 
 
-	/* STDIN */
-	newproc->p_file_descriptor_table[0] = open_filetable.open_files[0]; 
-	newproc->max_index_occupied += 1; 
+	newproc->p_open_filetable = open_filetable_create(); 
+	open_filetable_init(newproc->p_open_filetable); 
 
-	/* STDOUT */
-	newproc->p_file_descriptor_table[1] = open_filetable.open_files[0]; 
-	newproc->max_index_occupied += 1; 
-
-	/* STDERR */
-	newproc->p_file_descriptor_table[2] = open_filetable.open_files[0]; 
-	newproc->max_index_occupied += 1; 
-
-	lock_release(open_filetable);
+	lock_release(newproc->p_open_filetable->open_filetable_lock);
 
 	return newproc;
 }

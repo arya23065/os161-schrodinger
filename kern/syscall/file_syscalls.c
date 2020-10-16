@@ -3,6 +3,9 @@
 #include <syscall.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <errno.h>
+#include <proc.h>
+
 
 
 
@@ -12,9 +15,21 @@ sys_open(const char *filename, int flags, mode_t mode)
 	//filename is the pathname 
 	KASSERT(flags == O_RDONLY || flags == O_WRONLY || flags == O_RDWR); 
 
-	//create a pointer to a vnode pointer and pass is to vopen, and itll open it and give it back to you 
+	const int or_flags = O_CREAT | O_EXCL | O_TRUNC | O_APPEND;
 
-	vfs_open(filename, flags, mode, struct vnode **ret)
+	//UNIVERSAL OPEN FILE TABLE HOW TF
+	// open_filetable_add(filetable *open_filetable, filename, flags, mode); 
+
+	if ((flags & or_flags) != flags) {
+		/* unknown flags were set */
+		return EINVAL;
+	}
+
+	open_filetable_add(curproc->p_open_filetable, filename, flags, mode); 
+
+
+	//if error return -1 
+
 	return 0;
 }
 

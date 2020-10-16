@@ -60,11 +60,8 @@ struct proc {
 	struct vnode *p_cwd;		/* current working directory */
 
 	/* add more material here as needed */
-	// struct filetable *p_filetable; 
-	// each should have its own file descriptor table 
-	struct open_filetable *p_file_descriptor_table[OPEN_MAX];
-	struct open_filetable *kernel_open_filetable;
-    int max_index_occupied; 
+	struct open_filetable *p_open_filetable;
+    // int p_max_index_occupied; 
 };
 
 /* This is the process structure for the kernel and for kernel-only threads. */
