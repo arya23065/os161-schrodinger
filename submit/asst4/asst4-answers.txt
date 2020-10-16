@@ -14,4 +14,40 @@ in load_segment().
 4. Once we have loaded the executable, we don't need the file reference anymore. Moreover, if we don't
 call vfs_close() before switching to usermode, other processes won't be able to execute the same program.
 
-5. 
+5. mips_usermode(), defined in kern/arch/mips/locore/trap.c is the function that forces the switch to usermode.
+It is called only by enter_new_process() and enter_forked_process(). It is machine dependent. This is because 
+it uses asm_usermode(), which is a machine dependent function defined in exception-mips1.S.
+
+6. copyin() and copyout() are defined in kern/include/copyinout.h, and implemented in kern/vm/copyinout.c.
+memmove() is defined in userland/include/string.h and implemented in common/libc/string/memmove.c
+copyin and copyout are functions used to move data from user memory to kernel memory. Meanwhile, memmove 
+is used to move data within user memory. Hence, we need more complicated mechanisms in the implementation 
+of copyin and copyout so that kernel memory doesn't leak to user programs. Moreover, copy in and copy out must
+also validate the user address for this reason.
+
+7. userptr_t is a pointer to a one-byte struct, so it won't mix with other pointers. It is used to indicate addresses
+in user space. 
+
+8. The numerical value for the system call exception code is 8 (EX_SYS) as defined in kern/arch/mips/include/trapframe.h.
+
+9. the instructions in MIPS are 4 bytes. We find this out by looking at kern/arch/mips/syscall/syscall.c:181, where the program
+counter is being incremented by 4 to go the next instruction.
+
+10. Because user level fatal errors should not cause the system to panic, and eventually shut down completely. Moreover, kill_curthread()
+only panics, and doesn't handle the error by doing things such as deallocating memory, etc.
+
+11. We would need to fetch additional arguments from the user level stack. Any system calls made from a user level program would store additional
+arguments in the user level stack.
+
+12. The SYSCALL() macro allows us to have a single function that is responsible for dispatching system calls by loading the call number in v0.
+
+13. On line 85 of userland/lib/libc/arch/mips/syscalls-mips.S, we can see that the instruction "syscall" is executed.
+
+14. The first argument of lseek is passed in register a0. Second 64 bit argument is passed in registers a2-a3, and the 4th argument is passed in 
+the user level stack. The 64 bit return value is stored in v0-v1. In void syscall(trapframe *tf), we would find each of these arguments in the aforementioned
+registers, which will be stored in the trapframe (including the user level stack pointer), and the return value will be passed to v0-v1 in the trapframe.
+
+15. vfs_open() is the function that is used to open files. The macro called to read a file is VOP_READ() and the one used to write to a file is VOP_WRITE().
+vnode is the data structure used to represent open files in the kernel.
+
+16. VOP_INCREF() and VOP_DECREF() increase and decrease the number of references to a given vnode respectively.
