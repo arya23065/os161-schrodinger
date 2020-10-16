@@ -86,7 +86,8 @@ proc_create(const char *name)
 	proc->p_cwd = NULL;
 
 	/* Open filetable */
-	proc->p_file_descriptor_table = NULL;
+	// proc->p_file_descriptor_table = NULL;
+	proc->max_index_occupied = -1; 
 
 	return proc;
 }
@@ -174,9 +175,9 @@ proc_destroy(struct proc *proc)
 	// filetable_destroy(proc->p_filetable)
 	// proc->p_filetable = NULL;
 
-	for (int i = 0; i < OPEN_MAX; i++) {
-		proc->p_file_descriptor_table[i] = NULL; 
-	}
+	// for (int i = 0; i < OPEN_MAX; i++) {
+	// 	proc->p_file_descriptor_table[i] = NULL; 
+	// }
 
 	threadarray_cleanup(&proc->p_threads);
 	spinlock_cleanup(&proc->p_lock);
@@ -232,8 +233,24 @@ proc_create_runprogram(const char *name)
 	spinlock_release(&curproc->p_lock);
 
 	/* Add standard open files to the process' filetable*/
-	newproc->p_filetable = filetable_create();
-	filetable_init(newproc->p_filetable);
+	// newproc->p_filetable = filetable_create();
+	// filetable_init(newproc->p_filetable);
+
+	lock_acquire(open_filetable); 
+
+	/* STDIN */
+	newproc->p_file_descriptor_table[0] = open_filetable.open_files[0]; 
+	newproc->max_index_occupied += 1; 
+
+	/* STDOUT */
+	newproc->p_file_descriptor_table[1] = open_filetable.open_files[0]; 
+	newproc->max_index_occupied += 1; 
+
+	/* STDERR */
+	newproc->p_file_descriptor_table[2] = open_filetable.open_files[0]; 
+	newproc->max_index_occupied += 1; 
+
+	lock_release(open_filetable);
 
 	return newproc;
 }

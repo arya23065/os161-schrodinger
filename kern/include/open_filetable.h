@@ -3,7 +3,8 @@
 
 #include <open_file.h>
 #include <synch.h>
-// #include <limits.h>
+// #include <fcntl.h>
+#include <limits.h>
 
 
 struct open_filetable {
