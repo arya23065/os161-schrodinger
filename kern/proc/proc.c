@@ -49,7 +49,7 @@
 #include <addrspace.h>
 #include <vnode.h>
 #include <vnode.h>
-#include <filetable.h>
+#include <open_filetable.h>
 
 
 /*
@@ -86,7 +86,7 @@ proc_create(const char *name)
 	proc->p_cwd = NULL;
 
 	/* Open filetable */
-	proc->p_filetable = NULL;
+	proc->p_file_descriptor_table = NULL;
 
 	return proc;
 }
@@ -171,8 +171,12 @@ proc_destroy(struct proc *proc)
 		as_destroy(as);
 	}
 
-	filetable_destroy(proc->p_filetable)
-	proc->p_filetable = NULL;
+	// filetable_destroy(proc->p_filetable)
+	// proc->p_filetable = NULL;
+
+	for (int i = 0; i < OPEN_MAX; i++) {
+		proc->p_file_descriptor_table[i] = NULL; 
+	}
 
 	threadarray_cleanup(&proc->p_threads);
 	spinlock_cleanup(&proc->p_lock);
