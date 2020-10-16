@@ -89,6 +89,13 @@ proc_create(const char *name)
 	// proc->p_file_descriptor_table = NULL;
 	proc->max_index_occupied = -1; 
 
+	// but should not create a new one each time should just get open file table!!!!!!!!!!
+	proc->kernel_open_filetable = open_filetable_create(); 
+
+	if (name == "[kernel]") {
+		open_filetable_init(proc->kernel_open_filetable);
+	} 
+
 	return proc;
 }
 

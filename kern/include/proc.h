@@ -63,6 +63,7 @@ struct proc {
 	// struct filetable *p_filetable; 
 	// each should have its own file descriptor table 
 	struct open_filetable *p_file_descriptor_table[OPEN_MAX];
+	struct open_filetable *kernel_open_filetable;
     int max_index_occupied; 
 };
 
