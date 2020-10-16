@@ -89,7 +89,7 @@ proc_create(const char *name)
 	// proc->p_file_descriptor_table = NULL;
 	// proc->max_index_occupied = -1; 
 
-	proc->p_open_filetable = NULL; 
+	proc->p_open_filetable = open_filetable_create(); 
 
 	return proc;
 }
@@ -181,11 +181,11 @@ proc_destroy(struct proc *proc)
 	// for (int i = 0; i < OPEN_MAX; i++) {
 	// 	proc->p_file_descriptor_table[i] = NULL; 
 	// }
+	open_filetable_destroy(proc->p_open_filetable);
 
 	threadarray_cleanup(&proc->p_threads);
 	spinlock_cleanup(&proc->p_lock);
 
-	open_filetable_destroy(proc->p_open_filetable);
 
 	kfree(proc->p_name);
 	kfree(proc);
@@ -243,7 +243,7 @@ proc_create_runprogram(const char *name)
 
 	lock_acquire(newproc->p_open_filetable->open_filetable_lock); 
 
-	newproc->p_open_filetable = open_filetable_create(); 
+	// newproc->p_open_filetable = open_filetable_create(); 
 	open_filetable_init(newproc->p_open_filetable); 
 
 	lock_release(newproc->p_open_filetable->open_filetable_lock);

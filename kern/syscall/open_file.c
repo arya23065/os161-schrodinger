@@ -2,29 +2,29 @@
 #include <kern/fcntl.h>
 
 struct open_file*
-open_file_create(int status,  struct vnode *vnode) {
+open_file_create(int status, struct vnode *vnode) {
 
-    KASSERT(status != NULL); 
+    // KASSERT(status != NULL); 
     KASSERT(vnode != NULL); 
 
-    struct open_file* open_file; 
+    struct open_file* file; 
 
-    open_file = (open_file*) kmalloc(sizeof(struct open_file));
+    file = (open_file*) kmalloc(sizeof(struct open_file));
 
-    if (open_file == NULL) {
+    if (file == NULL) {
                 return NULL;
     }
 
-    open_file->offset_lock = lock_create("offset lock");
+    file->offset_lock = lock_create("offset lock");
 
     // filetable->open_files = array_create(); 
     // array_init(filetable->open_files); 
 
-    open_file->status = status; 
-    open_file->offset = 0; 
-    open_file->vnode = vnode; 
+    file->status = status; 
+    file->offset = 0; 
+    file->vnode = vnode; 
 
-    return open_file; 
+    return file; 
 }
 
 int

@@ -32,6 +32,8 @@
 
 
 #include <cdefs.h> /* for __DEAD */
+#include <types.h> 
+
 struct trapframe; /* from <machine/trapframe.h> */
 
 /*
@@ -63,19 +65,19 @@ int sys___time(userptr_t user_seconds, userptr_t user_nanoseconds);
  * System calls to handle files
  */
 
-int sys_open(const char *filename, int flags, mode_t mode); 
-int sys_read(int fd, void *buf, size_t buflen); 
-int sys_write(int fd, const void *buf, size_t nbytes); 
-int sys_lseek(int fd, off_t pos, int whence); 
-int sys_close(int fd); 
-int sys_dup2(int oldfd, int newfd); 
+int sys_open(char *filename, int flags, mode_t mode); 
+// int sys_read(int fd, void *buf, size_t buflen); 
+// int sys_write(int fd, const void *buf, size_t nbytes); 
+// int sys_lseek(int fd, off_t pos, int whence); 
+// int sys_close(int fd); 
+// int sys_dup2(int oldfd, int newfd); 
 
 /*
  * System calls to handle the directory of the current process
  */
 
-int sys_chdir(const char *pathname); 
-int sys__getcwd(char *buf, size_t buflen); 
+// int sys_chdir(const char *pathname); 
+// int sys__getcwd(char *buf, size_t buflen); 
 
 
 
