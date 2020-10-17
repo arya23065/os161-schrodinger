@@ -2,9 +2,10 @@
 #define _OPENFILETABLE_H_
 
 #include <types.h>
+#include <lib.h>
 #include <limits.h>
 #include <open_file.h>
-// #include <synch.h>
+#include <synch.h>
 // #include <fcntl.h>
 
 
@@ -16,7 +17,7 @@ struct open_filetable {
     int max_index_occupied; 
 };
 
-struct open_filetable* open_filetable_create(); 
+struct open_filetable* open_filetable_create(void);
 int open_filetable_destroy(struct open_filetable *open_filetable);
 int open_filetable_init(struct open_filetable *open_filetable); 
 int open_filetable_add(struct open_filetable *open_filetable, char *path, int openflags, mode_t mode); 

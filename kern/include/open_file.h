@@ -2,13 +2,15 @@
 #define _OPENFILE_H_
 
 #include <types.h>
-#include <vnode.h>
-#include <synch.h>
+#include <lib.h>
+// #include <uio.h>
+// #include <vnode.h>
+// #include <synch.h>
 
 
 struct open_file {
 	int status;	
-    unsigned int offset; 
+    off_t offset; 
     struct vnode *vnode; 
     struct lock *offset_lock;
 

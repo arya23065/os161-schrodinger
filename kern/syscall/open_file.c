@@ -1,10 +1,17 @@
 
 #include <types.h>
-#include <lib.h>
-#include <open_file.h>
-#include <vnode.h>
-#include <synch.h>
+// #include <kern/errno.h>
 // #include <kern/fcntl.h>
+// #include <lib.h>
+// #include <uio.h>
+// #include <vfs.h>
+// #include <fs.h>
+#include <synch.h>
+// #include <vnode.h>
+#include <open_file.h>
+// #include <device.h>
+// #include <spinlock.h>
+
 
 struct open_file*
 open_file_create(int status, struct vnode *vnode) {
@@ -14,7 +21,7 @@ open_file_create(int status, struct vnode *vnode) {
 
     struct open_file* new_file; 
 
-    new_file = (open_file*) kmalloc(sizeof(struct open_file));
+    new_file = (struct open_file*) kmalloc(sizeof(struct open_file));
 
     if (new_file == NULL) {
                 return NULL;

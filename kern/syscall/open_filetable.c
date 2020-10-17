@@ -1,9 +1,21 @@
 
 #include <types.h>
+#include <lib.h>
 #include <open_filetable.h>
 #include <vnode.h>
+#include <kern/fcntl.h>
+#include <vfs.h>
+#include <synch.h>
 // #include <array.h>
 // #include <vfs.h>
+
+// #include <types.h>
+// #include <kern/errno.h>
+// #include <limits.h>
+// #include <lib.h>
+// #include <vfs.h>
+// #include <vnode.h>
+
 
 
 
@@ -11,10 +23,10 @@ struct open_filetable*
 open_filetable_create() {
     struct open_filetable* open_filetable; 
 
-    open_filetable = (open_filetable*) kmalloc(sizeof(struct open_filetable));
+    open_filetable = (struct open_filetable*) kmalloc(sizeof(struct open_filetable));
 
     if (open_filetable == NULL) {
-                return NULL;
+        return NULL;
     }
 
     open_filetable->open_filetable_lock = lock_create("open filetable lock");
@@ -43,7 +55,7 @@ open_filetable_destroy(struct open_filetable *open_filetable) {
 }
 
 int
-open_filetable_init(struct filetable *open_filetable) {
+open_filetable_init(struct open_filetable *open_filetable) {
     KASSERT(open_filetable != NULL); 
 
     lock_acquire(open_filetable->open_filetable_lock); 
@@ -53,41 +65,47 @@ open_filetable_init(struct filetable *open_filetable) {
     struct vnode *console_stdin  = NULL; 
     struct vnode *console_stdout  = NULL; 
     struct vnode *console_sterr  = NULL; 
-    console_stdin* = (vnode*)kmalloc(sizeof(vnode));
-    console_stdout* = (vnode*)kmalloc(sizeof(vnode));
-    console_sterr* = (vnode*)kmalloc(sizeof(vnode));
+    console_stdin = (struct vnode*)kmalloc(sizeof(struct vnode));
+    console_stdout = (struct vnode*)kmalloc(sizeof(struct vnode));
+    console_sterr = (struct vnode*)kmalloc(sizeof(struct vnode));
+
+    char buf[32];
+    strcpy(buf, "con:");
 
     /*initialising STDIN*/
-    if (vfs_open("con:", O_RDONLY, 0, &console_stdin) != 0) {
-        vfs_close(console);
+    if (vfs_open(buf, O_RDONLY, 0, &console_stdin) != 0) {
+        vfs_close(console_stdin);
         return -1;
     } else {
         struct open_file *new_file; 
-        if (new_file = open_file_create(O_RDONLY,  console_stdin); == NULL) {
+        new_file = open_file_create(O_RDONLY,  console_stdin);
+        if (new_file == NULL) {
             return -1; 
         }
         open_filetable->max_index_occupied += 1; 
     }
 
     /*initialising STDOUT*/
-    if (vfs_open("con:", O_WRONLY, 0, &console_stdout) != 0) {
+    if (vfs_open(buf, O_WRONLY, 0, &console_stdout) != 0) {
         vfs_close(console_stdout);
         return -1;
     } else {
         struct open_file *new_file; 
-        if (new_file = open_file_create(O_WRONLY,  console_stdout); == NULL) {
+        new_file = open_file_create(O_WRONLY,  console_stdout); 
+        if (new_file  == NULL) {
             return -1; 
         }
         open_filetable->max_index_occupied += 1; 
     }
 
     /*initialising STDERR*/
-    if (vfs_open("con:", O_RDONLY, 0, &console_sterr) != 0) {
+    if (vfs_open(buf, O_RDONLY, 0, &console_sterr) != 0) {
         vfs_close(console_sterr);
         return -1;
     } else {
         struct open_file *new_file; 
-        if (new_file = open_file_create(O_RDONLY,  console_sterr); == NULL) {
+        new_file = open_file_create(O_RDONLY,  console_sterr);
+        if (new_file == NULL) {
             return -1; 
         }
         open_filetable->max_index_occupied += 1; 
@@ -108,14 +126,18 @@ open_filetable_add(struct open_filetable *open_filetable, char *path, int openfl
     lock_acquire(open_filetable->open_filetable_lock); 
 
     struct vnode *new_vnode  = NULL; 
-    new_vnode* = (vnode*)kmalloc(sizeof(vnode));
+    new_vnode = (struct vnode*) kmalloc(sizeof(struct vnode));
 
-    if (vfs_open(path, openflags, mode, &new_vnode) != 0) {
+    char buf[32]; 
+    strcpy(buf, path);
+
+    if (vfs_open(buf, openflags, mode, &new_vnode) != 0) {
         vfs_close(new_vnode);
         return -1;
     } else {
         struct open_file *new_file; 
-        if (new_file = open_file_create(openflags,  new_vnode) == NULL) {
+        new_file = open_file_create(openflags,  new_vnode); 
+        if (new_file == NULL) {
             return -1; 
         }
         open_filetable->max_index_occupied += 1; 
@@ -123,7 +145,7 @@ open_filetable_add(struct open_filetable *open_filetable, char *path, int openfl
 
     int return_index = open_filetable->max_index_occupied; 
 
-    lock_require(open_filetable->open_filetable_lock); 
+    lock_release(open_filetable->open_filetable_lock); 
 
     return return_index; 
 

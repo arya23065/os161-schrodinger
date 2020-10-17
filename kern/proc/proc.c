@@ -49,6 +49,7 @@
 #include <addrspace.h>
 #include <vnode.h>
 #include <open_filetable.h>
+// #include <open_file.h>
 #include <synch.h>
 
 
@@ -182,7 +183,7 @@ proc_destroy(struct proc *proc)
 	// for (int i = 0; i < OPEN_MAX; i++) {
 	// 	proc->p_file_descriptor_table[i] = NULL; 
 	// }
-	// open_filetable_destroy(proc->p_open_filetable);
+	open_filetable_destroy(proc->p_open_filetable);
 
 	threadarray_cleanup(&proc->p_threads);
 	spinlock_cleanup(&proc->p_lock);
@@ -242,12 +243,9 @@ proc_create_runprogram(const char *name)
 	// newproc->p_filetable = filetable_create();
 	// filetable_init(newproc->p_filetable);
 
-	// lock_acquire(newproc->p_open_filetable->open_filetable_lock); 
-
-	// // newproc->p_open_filetable = open_filetable_create(); 
-	// open_filetable_init(newproc->p_open_filetable); 
-
-	// lock_release(newproc->p_open_filetable->open_filetable_lock);
+	lock_acquire(newproc->p_open_filetable->open_filetable_lock); 
+	open_filetable_init(newproc->p_open_filetable); 
+	lock_release(newproc->p_open_filetable->open_filetable_lock);
 
 	return newproc;
 }
