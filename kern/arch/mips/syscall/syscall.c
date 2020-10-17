@@ -113,12 +113,11 @@ syscall(struct trapframe *tf)
 
 	    /* Add stuff here */
 
-		case SYS_open:
-		err = sys_open((char*) tf->tf_a0,
-			tf->tf_a1, 
-			(mode_t)tf->tf_a2);
-			// &retval);
-		break;
+		// case SYS_open:
+		// err = sys_open((char*) tf->tf_a0,
+		// 	tf->tf_a1, 
+		// 	(mode_t)tf->tf_a2);
+		// break;
 
 		// case SYS_read:
 		// err = sys_read((userptr_t)tf->tf_a0,

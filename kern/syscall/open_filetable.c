@@ -1,9 +1,9 @@
 
+#include <types.h>
 #include <open_filetable.h>
 #include <vnode.h>
-#include <array.h>
-// #include <fcntl.h>
-#include <vfs.h>
+// #include <array.h>
+// #include <vfs.h>
 
 
 
@@ -81,13 +81,13 @@ open_filetable_init(struct filetable *open_filetable) {
         open_filetable->max_index_occupied += 1; 
     }
 
-    /*initialising STDIN*/
-    if (vfs_open("con:", O_WRONLY, 0, &console_sterr) != 0) {
+    /*initialising STDERR*/
+    if (vfs_open("con:", O_RDONLY, 0, &console_sterr) != 0) {
         vfs_close(console_sterr);
         return -1;
     } else {
         struct open_file *new_file; 
-        if (new_file = open_file_create(O_WRONLY,  console_sterr); == NULL) {
+        if (new_file = open_file_create(O_RDONLY,  console_sterr); == NULL) {
             return -1; 
         }
         open_filetable->max_index_occupied += 1; 

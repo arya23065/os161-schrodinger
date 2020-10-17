@@ -1,38 +1,39 @@
 #include <types.h>
 // #include <copyinout.h>
-#include <kern/fcntl.h>
-#include <syscall.h>
+// #include <kern/fcntl.h>
+// #include <syscall.h>
 // #include <unistd.h>
-#include <kern/errno.h>
-#include <proc.h>
-#include <current.h>
+// #include <kern/errno.h>
+// #include <proc.h>
+// #include <current.h>
 
 
 
 
-int
-sys_open(char *filename, int flags, mode_t mode)
-{
-	//filename is the pathname 
-	KASSERT(flags == O_RDONLY || flags == O_WRONLY || flags == O_RDWR); 
+// int
+// sys_open(char *filename, int flags, mode_t mode)
+// {
+// 	// //filename is the pathname 
+// 	// KASSERT(flags == O_RDONLY || flags == O_WRONLY || flags == O_RDWR); 
 
-	const int or_flags = O_CREAT | O_EXCL | O_TRUNC | O_APPEND;
+// 	// const int or_flags = O_CREAT | O_EXCL | O_TRUNC | O_APPEND;
 
-	//UNIVERSAL OPEN FILE TABLE HOW TF
-	// open_filetable_add(filetable *open_filetable, filename, flags, mode); 
+// 	// //UNIVERSAL OPEN FILE TABLE HOW TF
+// 	// // open_filetable_add(filetable *open_filetable, filename, flags, mode); 
 
-	if ((flags & or_flags) != flags) {
-		/* unknown flags were set */
-		return EINVAL;
-	}
+// 	// if ((flags & or_flags) != flags) {
+// 	// 	/* unknown flags were set */
+// 	// 	return EINVAL;
+// 	// }
+// 	// //copyin 
 
-	open_filetable_add(curproc->p_open_filetable, filename, flags, mode); 
+// 	// open_filetable_add(curproc->p_open_filetable, filename, flags, mode); 
 
 
-	//if error return -1 
+// 	//if error return -1 
 
-	return 0;
-}
+// 	return 0;
+// }
 
 // int
 // sys_read(int fd, void *buf, size_t buflen)

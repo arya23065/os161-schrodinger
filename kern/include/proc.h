@@ -36,11 +36,12 @@
  * Note: curproc is defined by <current.h>.
  */
 
+#include <types.h>
 #include <spinlock.h>
 #include <thread.h> /* required for struct threadarray */
-#include <open_filetable.h>
+// #include <open_filetable.h>
 // #include <fcntl.h>
-#include <limits.h>
+// #include <limits.h>
 // #include <cdefs.h>
 
 

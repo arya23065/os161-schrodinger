@@ -1,10 +1,9 @@
-#ifndef _OPEN_FILE_H_
-#define _OPEN_FILE_H_
+#ifndef _OPENFILE_H_
+#define _OPENFILE_H_
 
+#include <types.h>
 #include <vnode.h>
 #include <synch.h>
-#include <limits.h>
-
 
 
 struct open_file {
@@ -20,4 +19,4 @@ int open_file_destroy(struct open_file *open_file);
 
 
 
-#endif /* _OPEN_FILE_H_ */
+#endif /* _OPENFILE_H_ */

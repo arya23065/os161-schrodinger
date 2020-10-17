@@ -1,5 +1,10 @@
+
+#include <types.h>
+#include <lib.h>
 #include <open_file.h>
-#include <kern/fcntl.h>
+#include <vnode.h>
+#include <synch.h>
+// #include <kern/fcntl.h>
 
 struct open_file*
 open_file_create(int status, struct vnode *vnode) {
@@ -9,16 +14,13 @@ open_file_create(int status, struct vnode *vnode) {
 
     struct open_file* new_file; 
 
-    new_file = kmalloc(sizeof(struct open_file));
+    new_file = (open_file*) kmalloc(sizeof(struct open_file));
 
     if (new_file == NULL) {
                 return NULL;
     }
 
     new_file->offset_lock = lock_create("open file lock");
-
-    // filetable->open_files = array_create(); 
-    // array_init(filetable->open_files); 
 
     new_file->status = status; 
     new_file->offset = 0; 
