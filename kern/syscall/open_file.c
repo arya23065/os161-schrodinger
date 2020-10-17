@@ -7,24 +7,24 @@ open_file_create(int status, struct vnode *vnode) {
     // KASSERT(status != NULL); 
     KASSERT(vnode != NULL); 
 
-    struct open_file* file; 
+    struct open_file* new_file; 
 
-    file = (open_file*) kmalloc(sizeof(struct open_file));
+    new_file = kmalloc(sizeof(struct open_file));
 
-    if (file == NULL) {
+    if (new_file == NULL) {
                 return NULL;
     }
 
-    file->offset_lock = lock_create("offset lock");
+    new_file->offset_lock = lock_create("open file lock");
 
     // filetable->open_files = array_create(); 
     // array_init(filetable->open_files); 
 
-    file->status = status; 
-    file->offset = 0; 
-    file->vnode = vnode; 
+    new_file->status = status; 
+    new_file->offset = 0; 
+    new_file->vnode = vnode; 
 
-    return file; 
+    return new_file; 
 }
 
 int

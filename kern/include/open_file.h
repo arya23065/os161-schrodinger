@@ -3,6 +3,7 @@
 
 #include <vnode.h>
 #include <synch.h>
+#include <limits.h>
 
 
 
