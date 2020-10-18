@@ -20,25 +20,12 @@ sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
 
 	copyinstr(filename, fname, NAME_MAX, NULL);
 
-	// Look at flag assertion later
-	const int or_flags = O_CREAT | O_EXCL | O_TRUNC | O_APPEND;
-
-	KASSERT(flags & O_RDONLY || flags & O_WRONLY || flags & O_RDWR); 
-
-	//UNIVERSAL OPEN FILE TABLE HOW TF
-	// open_filetable_add(filetable *open_filetable, filename, flags, mode); 
-
-	/*
-	ENXIO
-	EINVAL
-	ENOENT
-	EMFILE
-	*/
-
-	if (((int)flags & or_flags) != (int)flags) {
-		/* unknown flags were set */
-		return EINVAL;
-	}
+	// /*
+	// ENXIO
+	// EINVAL
+	// ENOENT
+	// EMFILE
+	// */
 
 	*err = 0;
 	*retval = open_filetable_add(curproc->p_open_filetable, fname, flags, mode, err); 
@@ -52,11 +39,11 @@ sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
 // 	return 0;
 // }
 
-// int
-// sys_write(int fd, const void *buf, size_t nbytes)
-// {
-// 	return 0;
-// }
+int
+sys_write(int fd, const void *buf, size_t nbytes)
+{
+	return 0;
+}
 
 // int
 // sys_lseek(int fd, off_t pos, int whence)
@@ -64,11 +51,13 @@ sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
 // 	return 0;
 // }
 
-// int
-// sys_close(int fd)
-// {
-// 	return 0;
-// }
+int
+sys_close(int fd, int *retval)
+{
+	open_filetable_destroy(curproc->open_filetable);
+	
+	return 0;
+}
 
 // int
 // sys_dup2(int oldfd, int newfd)

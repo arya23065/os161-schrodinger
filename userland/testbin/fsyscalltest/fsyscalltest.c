@@ -25,9 +25,9 @@
 static void
 simple_test()
 {
-  	static char writebuf[41] = 
-		"Twiddle dee dee, Twiddle dum dum.......\n";
-	static char readbuf[41];
+  	// static char writebuf[41] = 
+	// 	"Twiddle dee dee, Twiddle dum dum.......\n";
+	// static char readbuf[41];
 
 	const char *file;
 	// int fd, rv;
@@ -39,6 +39,7 @@ simple_test()
 	if (fd<0) {
 		err(1, "%s: open for write", file);
 	}
+	printf("bhnguytfgyhfrtytytyyt: %d\n", fd);
 
 	// rv = write(fd, writebuf, 40);
 	// if (rv<0) {
@@ -54,6 +55,7 @@ simple_test()
 	if (fd<0) {
 		err(1, "%s: open for read", file);
 	}
+	printf("bhnguytfgyhfrtytytyyt%d\n", fd);
 
 	// rv = read(fd, readbuf, 40);
 	// if (rv<0) {
@@ -64,11 +66,11 @@ simple_test()
 	// 	err(1, "%s: close (2nd time)", file);
 	// }
 	/* ensure null termination */
-	readbuf[40] = 0;
+	// readbuf[40] = 0;
 
-	if (strcmp(readbuf, writebuf)) {
-		errx(1, "Buffer data mismatch!");
-	}
+	// if (strcmp(readbuf, writebuf)) {
+	// 	errx(1, "Buffer data mismatch!");
+	// }
 }
 /*
  * This tests the very basic functionality of dup2.

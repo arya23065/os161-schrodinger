@@ -69,52 +69,61 @@ open_filetable_init(struct open_filetable *open_filetable) {
     console_stdout = (struct vnode*)kmalloc(sizeof(struct vnode));
     console_sterr = (struct vnode*)kmalloc(sizeof(struct vnode));
 
-    char buf[32];
-    strcpy(buf, "con:");
+    char buf_in[32];
+    strcpy(buf_in, "con:");
 
     /*initialising STDIN*/
-    if (vfs_open(buf, O_RDONLY, 0, &console_stdin) != 0) {
+    if (vfs_open(buf_in, O_RDONLY, 0, &console_stdin) != 0) {
         // vfs_close(console_stdin);
         lock_release(open_filetable->open_filetable_lock);
         return -1;
     } else {
-        struct open_file *new_file; 
-        new_file = open_file_create(O_RDONLY,  console_stdin);
-        if (new_file == NULL) {
+        struct open_file *std_in; 
+        std_in = open_file_create(O_RDONLY,  console_stdin);
+        if (std_in == NULL) {
             lock_release(open_filetable->open_filetable_lock);
             return -1; 
         }
-        open_filetable->max_index_occupied += 1; 
+        open_filetable->max_index_occupied++; 
+        open_filetable->open_files[open_filetable->max_index_occupied] = std_in;
     }
 
+    char buf_out[32];
+    strcpy(buf_out, "con:");
+
     /*initialising STDOUT*/
-    if (vfs_open(buf, O_WRONLY, 0, &console_stdout) != 0) {
+    if (vfs_open(buf_out, O_WRONLY, 0, &console_stdout) != 0) {
         // vfs_close(console_stdout);
         lock_release(open_filetable->open_filetable_lock);
         return -1;
     } else {
-        struct open_file *new_file; 
-        new_file = open_file_create(O_WRONLY,  console_stdout); 
-        if (new_file  == NULL) {
+        struct open_file *std_out; 
+        std_out = open_file_create(O_WRONLY,  console_stdout); 
+        if (std_out == NULL) {
             lock_release(open_filetable->open_filetable_lock);
             return -1; 
         }
-        open_filetable->max_index_occupied += 1; 
+        open_filetable->max_index_occupied++;
+        open_filetable->open_files[open_filetable->max_index_occupied] = std_out;
     }
 
+    char buf_err[32];
+    strcpy(buf_err, "con:");
+
     /*initialising STDERR*/
-    if (vfs_open(buf, O_RDONLY, 0, &console_sterr) != 0) {
+    if (vfs_open(buf_err, O_RDONLY, 0, &console_sterr) != 0) {
         // vfs_close(console_sterr);
         lock_release(open_filetable->open_filetable_lock);
         return -1;
     } else {
-        struct open_file *new_file; 
-        new_file = open_file_create(O_RDONLY,  console_sterr);
-        if (new_file == NULL) {
+        struct open_file *std_err; 
+        std_err = open_file_create(O_RDONLY,  console_sterr);
+        if (std_err == NULL) {
             lock_release(open_filetable->open_filetable_lock);
             return -1; 
         }
-        open_filetable->max_index_occupied += 1; 
+        open_filetable->max_index_occupied++; 
+        open_filetable->open_files[open_filetable->max_index_occupied] = std_err;
     }
 
     lock_release(open_filetable->open_filetable_lock); 
