@@ -24,7 +24,7 @@ open_file_create(int status, struct vnode *vnode) {
     new_file = (struct open_file*) kmalloc(sizeof(struct open_file));
 
     if (new_file == NULL) {
-                return NULL;
+        return NULL;
     }
 
     new_file->offset_lock = lock_create("open file lock");

@@ -8,35 +8,42 @@
 #include <current.h>
 #include <kern/errno.h>
 #include <open_filetable.h>
+#include <limits.h>
 
 
 int
 sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
-// sys_open(userptr_t *filename, userptr_t flags, userptr_t mode)
 {
-	(void) retval; //remove this
-	//filename is the pathname 
-	// KASSERT(flags == O_RDONLY || flags == O_WRONLY || flags == O_RDWR); 
+	//filename is the pathname
+	char fname [NAME_MAX];
+	int *err = (int*) kmalloc(sizeof(int));
 
+	copyinstr(filename, fname, NAME_MAX, NULL);
+
+	// Look at flag assertion later
 	const int or_flags = O_CREAT | O_EXCL | O_TRUNC | O_APPEND;
+
+	KASSERT(flags & O_RDONLY || flags & O_WRONLY || flags & O_RDWR); 
 
 	//UNIVERSAL OPEN FILE TABLE HOW TF
 	// open_filetable_add(filetable *open_filetable, filename, flags, mode); 
+
+	/*
+	ENXIO
+	EINVAL
+	ENOENT
+	EMFILE
+	*/
 
 	if (((int)flags & or_flags) != (int)flags) {
 		/* unknown flags were set */
 		return EINVAL;
 	}
-	//copyin 
 
-	open_filetable_add(curproc->p_open_filetable, (char*) filename, (int) flags, (mode_t) mode); 
+	*err = 0;
+	*retval = open_filetable_add(curproc->p_open_filetable, fname, flags, mode, err); 
 
-
-	// if (error) {
-	// 	return -1; 
-	// }
-
-	return 0;
+	return *err;
 }
 
 // int

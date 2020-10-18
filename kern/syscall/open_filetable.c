@@ -10,7 +10,7 @@
 // #include <vfs.h>
 
 // #include <types.h>
-// #include <kern/errno.h>
+#include <kern/errno.h>
 // #include <limits.h>
 // #include <lib.h>
 // #include <vfs.h>
@@ -74,12 +74,14 @@ open_filetable_init(struct open_filetable *open_filetable) {
 
     /*initialising STDIN*/
     if (vfs_open(buf, O_RDONLY, 0, &console_stdin) != 0) {
-        vfs_close(console_stdin);
+        // vfs_close(console_stdin);
+        lock_release(open_filetable->open_filetable_lock);
         return -1;
     } else {
         struct open_file *new_file; 
         new_file = open_file_create(O_RDONLY,  console_stdin);
         if (new_file == NULL) {
+            lock_release(open_filetable->open_filetable_lock);
             return -1; 
         }
         open_filetable->max_index_occupied += 1; 
@@ -87,12 +89,14 @@ open_filetable_init(struct open_filetable *open_filetable) {
 
     /*initialising STDOUT*/
     if (vfs_open(buf, O_WRONLY, 0, &console_stdout) != 0) {
-        vfs_close(console_stdout);
+        // vfs_close(console_stdout);
+        lock_release(open_filetable->open_filetable_lock);
         return -1;
     } else {
         struct open_file *new_file; 
         new_file = open_file_create(O_WRONLY,  console_stdout); 
         if (new_file  == NULL) {
+            lock_release(open_filetable->open_filetable_lock);
             return -1; 
         }
         open_filetable->max_index_occupied += 1; 
@@ -100,12 +104,14 @@ open_filetable_init(struct open_filetable *open_filetable) {
 
     /*initialising STDERR*/
     if (vfs_open(buf, O_RDONLY, 0, &console_sterr) != 0) {
-        vfs_close(console_sterr);
+        // vfs_close(console_sterr);
+        lock_release(open_filetable->open_filetable_lock);
         return -1;
     } else {
         struct open_file *new_file; 
         new_file = open_file_create(O_RDONLY,  console_sterr);
         if (new_file == NULL) {
+            lock_release(open_filetable->open_filetable_lock);
             return -1; 
         }
         open_filetable->max_index_occupied += 1; 
@@ -117,37 +123,57 @@ open_filetable_init(struct open_filetable *open_filetable) {
 
 }
 
-/* Returns index in open_filetable of new file*/
+/* Returns index in open_filetable of new file
+
+*/
 int 
-open_filetable_add(struct open_filetable *open_filetable, char *path, int openflags, mode_t mode) {
+open_filetable_add(struct open_filetable *open_filetable, char *path, int openflags, mode_t mode, int *err) {
     KASSERT(open_filetable != NULL); 
 
     //shouldnt have to pass in openfiletable cause there's only one!!!!!!!!!!!!!!!!
     lock_acquire(open_filetable->open_filetable_lock); 
 
+    int ret_fd;
     struct vnode *new_vnode  = NULL; 
     new_vnode = (struct vnode*) kmalloc(sizeof(struct vnode));
 
     char buf[32]; 
     strcpy(buf, path);
 
-    if (vfs_open(buf, openflags, mode, &new_vnode) != 0) {
-        vfs_close(new_vnode);
-        return -1;
-    } else {
+    *err = vfs_open(buf, openflags, mode, &new_vnode);
+    if (*err) {
+        // vfs_close(new_vnode);
+        ret_fd = -1;
+    } 
+    else {
         struct open_file *new_file; 
         new_file = open_file_create(openflags,  new_vnode); 
         if (new_file == NULL) {
-            return -1; 
+            ret_fd = -1;
         }
-        open_filetable->max_index_occupied += 1; 
+        else if (open_filetable->max_index_occupied == OPEN_MAX - 1) {
+            for (int i = 0; i < OPEN_MAX; i++) {
+                if (open_filetable->open_files[i] == NULL) {
+                    ret_fd = i;
+                    open_filetable->open_files[i] = new_file;
+                }
+                if (i == OPEN_MAX - 1 && open_filetable->open_files[i] != NULL) {
+                    *err = EMFILE;
+                    ret_fd = -1;
+                }
+            }
+        }
+        else {
+            open_filetable->max_index_occupied += 1;
+            ret_fd = open_filetable->max_index_occupied;
+            open_filetable->open_files[ret_fd] = new_file;
+            
+        }
     }
-
-    int return_index = open_filetable->max_index_occupied; 
 
     lock_release(open_filetable->open_filetable_lock); 
 
-    return return_index; 
+    return ret_fd; 
 
 }
 
