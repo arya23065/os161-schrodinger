@@ -35,6 +35,7 @@
 #include <thread.h>
 #include <current.h>
 #include <syscall.h>
+#include <copyinout.h>
 
 
 /*
@@ -99,6 +100,8 @@ syscall(struct trapframe *tf)
 
 	retval = 0;
 
+	off_t pos;
+
 	switch (callno) {
 	    case SYS_reboot:
 		err = sys_reboot(tf->tf_a0);
@@ -123,22 +126,31 @@ syscall(struct trapframe *tf)
 		// 		 (userptr_t)tf->tf_a1);
 		// break;
 
-		case SYS_write:
-		err = sys_write(tf->tf_a0,
-				(userptr_t)tf->tf_a1,
-				tf->tf_a2, 
-				&retval);
-		break;
-
-		// case SYS_lseek:
-		// err = sys_lseek((userptr_t)tf->tf_a0,
-		// 		 (userptr_t)tf->tf_a1);
+		// case SYS_write:
+		// err = sys_write(tf->tf_a0,
+		// 		(userptr_t)tf->tf_a1,
+		// 		tf->tf_a2, 
+		// 		&retval);
 		// break;
 
-		case SYS_close:
-		err = sys_close(tf->tf_a0,
-				 	&retval);
+		case SYS_lseek:
+
+		pos = (off_t) tf->tf_a2 << 32; 
+		pos = pos | (off_t) tf->tf_a3; 
+
+		int whence; 
+		int copyin_err = copyin((const_userptr_t) tf->tf_sp+16, &whence, sizeof(int));
+
+		if (copyin_err) break;
+
+		err = sys_lseek(tf->tf_a0,
+				pos, whence, &retval);
 		break;
+
+		// case SYS_close:
+		// err = sys_close(tf->tf_a0,
+		// 		 	&retval);
+		// break;
 
 		// case SYS_dup2:
 		// err = sys_dup2((userptr_t)tf->tf_a0,
