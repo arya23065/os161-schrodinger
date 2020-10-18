@@ -186,5 +186,31 @@ open_filetable_add(struct open_filetable *open_filetable, char *path, int openfl
 
 }
 
+int
+open_filetable_remove(struct open_filetable *open_filetable, int fd, int *err) {
+    KASSERT(open_filetable != NULL);
+    lock_acquire(open_filetable->open_filetable_lock);
+    
+    int retval = 0;
+    if(fd < OPEN_MAX && fd >= 0) {
+        if (open_filetable->open_files[fd] != NULL) {
+            vfs_close(open_filetable->open_files[fd]->vnode);
+            open_filetable->open_files[fd] = NULL;
+            // Find out if open_files[fd] should be freed if its the only reference to the open_file object.
+        }
+        else {
+            *err = EBADF;
+            retval = -1;
+        }
+    }
+    else {
+        *err = EBADF;
+        retval = -1;
+    }
+
+    lock_release(open_filetable->open_filetable_lock);
+    return retval;
+}
+
 
 

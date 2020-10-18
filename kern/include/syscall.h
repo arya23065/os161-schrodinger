@@ -71,7 +71,7 @@ int sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval);
 int sys_write(int fd, const void *buf, size_t nbytes); 
 // int sys_lseek(int fd, off_t pos, int whence); 
 int sys_close(int fd, int *retval); 
-// int sys_dup2(int oldfd, int newfd); 
+// int sys_dup2(int oldfd, int newfd, *retval); 
 
 /*
  * System calls to handle the directory of the current process

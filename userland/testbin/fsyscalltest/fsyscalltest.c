@@ -30,8 +30,8 @@ simple_test()
 	// static char readbuf[41];
 
 	const char *file;
-	// int fd, rv;
-	int fd;
+	int fd, rv;
+	// int fd;
 
 	file = "testfile";
 
@@ -46,10 +46,10 @@ simple_test()
 	// 	err(1, "%s: write", file);
 	// }
 
-	// rv = close(fd);
-	// if (rv<0) {
-	// 	err(1, "%s: close (1st time)", file);
-	// }
+	rv = close(fd);
+	if (rv<0) {
+		err(1, "%s: close (1st time)", file);
+	}
 
 	fd = open(file, O_RDONLY);
 	if (fd<0) {
@@ -61,10 +61,10 @@ simple_test()
 	// if (rv<0) {
 	// 	err(1, "%s: read", file);
 	// }
-	// rv = close(fd);
-	// if (rv<0) {
-	// 	err(1, "%s: close (2nd time)", file);
-	// }
+	rv = close(fd);
+	if (rv<0) {
+		err(1, "%s: close (2nd time)", file);
+	}
 	/* ensure null termination */
 	// readbuf[40] = 0;
 
