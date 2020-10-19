@@ -126,12 +126,12 @@ syscall(struct trapframe *tf)
 		// 		 (userptr_t)tf->tf_a1);
 		// break;
 
-		// case SYS_write:
-		// err = sys_write(tf->tf_a0,
-		// 		(userptr_t)tf->tf_a1,
-		// 		tf->tf_a2, 
-		// 		&retval);
-		// break;
+		case SYS_write:
+		err = sys_write(tf->tf_a0,
+				(userptr_t)tf->tf_a1,
+				tf->tf_a2, 
+				&retval);
+		break;
 
 		case SYS_lseek:
 

@@ -11,10 +11,12 @@
 
 // #include <types.h>
 #include <kern/errno.h>
-// #include <limits.h>
+#include <limits.h>
 // #include <lib.h>
 // #include <vfs.h>
 // #include <vnode.h>
+//#include <kern/iovec.h>
+#include<uio.h>
 
 
 
@@ -192,9 +194,13 @@ open_filetable_remove(struct open_filetable *open_filetable, int fd, int *err) {
     lock_acquire(open_filetable->open_filetable_lock);
     
     int retval = 0;
+    bool destroy_fd = false;
     if(fd < OPEN_MAX && fd >= 0) {
         if (open_filetable->open_files[fd] != NULL) {
+            if (open_filetable->open_files[fd]->vnode->vn_refcount == 1) destroy_fd = true;
             vfs_close(open_filetable->open_files[fd]->vnode);
+
+            if (destroy_fd) kfree(open_filetable->open_files[fd]);
             open_filetable->open_files[fd] = NULL;
             // Find out if open_files[fd] should be freed if its the only reference to the open_file object.
         }
@@ -210,6 +216,19 @@ open_filetable_remove(struct open_filetable *open_filetable, int fd, int *err) {
 
     lock_release(open_filetable->open_filetable_lock);
     return retval;
+}
+
+int open_filetable_write(struct open_filetable *open_filetable, int fd, const void *buf, size_t nbytes, int *err) {
+
+    if (fd < 0 || fd >= OPEN_MAX || open_filetable->open_files[fd] == NULL) {
+        *err = EBADF;
+        return -1;
+    }
+
+    struct iovec write_iov;
+    write_iov.iov_ubase = buf;
+    write_iov.iov_len = nbytes;
+    return 0;
 }
 
 

@@ -18,7 +18,7 @@ sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
 {
 	//filename is the pathname
 	char fname [NAME_MAX];
-	int err = 69;
+	int err = 0;
 
 	copyinstr(filename, fname, NAME_MAX, NULL);
 
@@ -40,11 +40,21 @@ sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
 // 	return 0;
 // }
 
-// int
-// sys_write(int fd, const void *buf, size_t nbytes)
-// {
-// 	return 0;
-// }
+int
+sys_write(int fd, const void *buf, size_t nbytes, int *retval)
+{
+	// void *kbuf;
+	// kbuf = kmalloc(nbytes);
+	// int err = copyin((const_userptr_t) buf, kbuf, nbytes);
+	// if (err) {
+	// 	*retval = -1;
+	// 	return err;
+	// }
+	int err = 0;
+	*retval = open_filetable_write(curproc->p_open_filetable, fd, buf, nbytes, &err);
+
+	return err;
+}
 
 int
 sys_lseek(int fd, off_t pos, int whence, int *retval)
@@ -128,7 +138,7 @@ sys_lseek(int fd, off_t pos, int whence, int *retval)
 int
 sys_close(int fd, int *retval)
 {
-	int err = 69;
+	int err = 0;
 	*retval = open_filetable_remove(curproc->p_open_filetable, fd, &err);
 	
 	return err;
