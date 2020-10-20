@@ -121,10 +121,12 @@ syscall(struct trapframe *tf)
 			&retval);
 		break;
 
-		// case SYS_read:
-		// err = sys_read((userptr_t)tf->tf_a0,
-		// 		 (userptr_t)tf->tf_a1);
-		// break;
+		case SYS_read:
+		err = sys_read(tf->tf_a0,
+				 (userptr_t)tf->tf_a1, 
+				 tf->tf_a2, 
+				 &retval);
+		break;
 
 		case SYS_write:
 		err = sys_write(tf->tf_a0,
@@ -145,6 +147,10 @@ syscall(struct trapframe *tf)
 
 		err = sys_lseek(tf->tf_a0,
 				pos, whence, &retval);
+
+		tf->tf_v1 = retval; 
+		long high_retval = (off_t) retval >> 32;
+		retval = (int32_t) high_retval;
 		break;
 
 		case SYS_close:

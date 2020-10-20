@@ -153,7 +153,6 @@ open_filetable_add(struct open_filetable *open_filetable, char *path, int openfl
 
     *err = vfs_open(buf, openflags, mode, &new_vnode);
     if (*err) {
-        // vfs_close(new_vnode);
         ret_fd = -1;
     } 
     else {
@@ -162,23 +161,20 @@ open_filetable_add(struct open_filetable *open_filetable, char *path, int openfl
         if (new_file == NULL) {
             ret_fd = -1;
         }
-        else if (open_filetable->max_index_occupied == OPEN_MAX - 1) {
-            for (int i = 0; i < OPEN_MAX; i++) {
+        else {
+            int i = 0;
+            while (i < OPEN_MAX) {
                 if (open_filetable->open_files[i] == NULL) {
                     ret_fd = i;
                     open_filetable->open_files[i] = new_file;
+                    break;
                 }
-                if (i == OPEN_MAX - 1 && open_filetable->open_files[i] != NULL) {
-                    *err = EMFILE;
-                    ret_fd = -1;
-                }
+                i++;
             }
-        }
-        else {
-            open_filetable->max_index_occupied += 1;
-            ret_fd = open_filetable->max_index_occupied;
-            open_filetable->open_files[ret_fd] = new_file;
-            
+            if (i == OPEN_MAX) {
+                *err = EMFILE;
+                ret_fd = -1;
+            }
         }
     }
 
@@ -202,7 +198,7 @@ open_filetable_remove(struct open_filetable *open_filetable, int fd, int *err) {
 
             if (destroy_fd) kfree(open_filetable->open_files[fd]);
             open_filetable->open_files[fd] = NULL;
-            // Find out if open_files[fd] should be freed if its the only reference to the open_file object.
+
         }
         else {
             *err = EBADF;
@@ -232,9 +228,10 @@ int open_filetable_write(struct open_filetable *open_filetable, int fd, void *bu
     struct uio *write_uio;
     write_uio = (struct uio*) kmalloc(sizeof(struct uio));
 
-    uio_kinit(write_iov, write_uio, buf, nbytes, open_filetable->open_files[fd]->offset, UIO_WRITE);
-
     lock_acquire(open_filetable->open_filetable_lock);
+    lock_acquire(open_filetable->open_files[fd]->offset_lock);
+
+    uio_kinit(write_iov, write_uio, buf, nbytes, open_filetable->open_files[fd]->offset, UIO_WRITE);
 
     while (write_uio->uio_resid != 0) {
          *err = VOP_WRITE(open_filetable->open_files[fd]->vnode, write_uio);
@@ -246,21 +243,52 @@ int open_filetable_write(struct open_filetable *open_filetable, int fd, void *bu
         nbytes = write_uio->uio_resid;
     }
 
-    if (!*err) {
-        lock_acquire(open_filetable->open_files[fd]->offset_lock);
+    if (!*err)
         open_filetable->open_files[fd]->offset = write_uio->uio_offset;
-        lock_release(open_filetable->open_files[fd]->offset_lock);
-    }
 
+    lock_release(open_filetable->open_files[fd]->offset_lock);
     lock_release(open_filetable->open_filetable_lock);
 
     return retval;
 }
 
-// int open_filetable_read(struct open_filetable *open_filetable, int fd, void *buf, size_t nbytes, int *err) {
+int open_filetable_read(struct open_filetable *open_filetable, int fd, void *buf, size_t nbytes, int *err) {
 
-//     return 0;
-// }
+    if (fd < 0 || fd >= OPEN_MAX || open_filetable->open_files[fd] == NULL) {
+        *err = EBADF;
+        return -1;
+    }
+
+    int retval = 0;
+
+    struct iovec *read_iov;
+    read_iov = (struct iovec*) kmalloc(sizeof(struct iovec));
+    struct uio *read_uio;
+    read_uio = (struct uio*) kmalloc(sizeof(struct uio));
+
+    lock_acquire(open_filetable->open_filetable_lock);
+    lock_acquire(open_filetable->open_files[fd]->offset_lock);
+
+    uio_kinit(read_iov, read_uio, buf, nbytes, open_filetable->open_files[fd]->offset, UIO_READ);
+
+    while (read_uio->uio_resid != 0) {
+         *err = VOP_READ(open_filetable->open_files[fd]->vnode, read_uio);
+         if (*err) {
+            retval = -1;
+            break;
+        }
+        retval += (nbytes - read_uio->uio_resid);
+        nbytes = read_uio->uio_resid;
+    }
+
+    if (!*err)
+        open_filetable->open_files[fd]->offset = read_uio->uio_offset;
+
+    lock_release(open_filetable->open_files[fd]->offset_lock);
+    lock_release(open_filetable->open_filetable_lock);
+
+    return retval;
+}
 
 
 

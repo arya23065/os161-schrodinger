@@ -27,7 +27,7 @@ simple_test()
 {
   	static char writebuf[41] = 
 		"Twiddle dee dee, Twiddle dum dum.......\n";
-	// static char readbuf[41];
+	static char readbuf[41];
 
 	const char *file;
 	int fd, rv;
@@ -38,7 +38,6 @@ simple_test()
 	if (fd<0) {
 		err(1, "%s: open for write", file);
 	}
-	printf("bhnguytfgyhfrtytytyyt: %d\n", fd);
 
 	rv = write(fd, writebuf, 40);
 	if (rv<0) {
@@ -54,22 +53,21 @@ simple_test()
 	if (fd<0) {
 		err(1, "%s: open for read", file);
 	}
-	printf("bhnguytfgyhfrtytytyyt%d\n", fd);
 
-	// rv = read(fd, readbuf, 40);
-	// if (rv<0) {
-	// 	err(1, "%s: read", file);
-	// }
+	rv = read(fd, readbuf, 40);
+	if (rv<0) {
+		err(1, "%s: read", file);
+	}
 	rv = close(fd);
 	if (rv<0) {
 		err(1, "%s: close (2nd time)", file);
 	}
-	// /* ensure null termination */
-	// readbuf[40] = 0;
+	/* ensure null termination */
+	readbuf[40] = 0;
 
-	// if (strcmp(readbuf, writebuf)) {
-	// 	errx(1, "Buffer data mismatch!");
-	// }
+	if (strcmp(readbuf, writebuf)) {
+		errx(1, "Buffer data mismatch!");
+	}
 }
 /*
  * This tests the very basic functionality of dup2.
@@ -235,7 +233,7 @@ simultaneous_write_test()
 {
   	static char writebuf1[41] = "Cabooble-madooddle, bora-bora-bora.....\n";
 	static char writebuf2[41] = "Yada, yada, yada, yada, yada, yada.....\n";
-	// static char readbuf[41];
+	static char readbuf[41];
 	static int seekpos = 20; // must be less than the writebuf length
 
 	const char *file1, *file2;
@@ -276,27 +274,27 @@ simultaneous_write_test()
 	}
 
 	/* Read and test the data from the first file */
-	// rv = read(fd1, readbuf, 40-seekpos);
-	// if (rv<0) {
-	// 	err(1, "%s: read", file1);
-	// }	
-	// readbuf[40] = 0;
+	rv = read(fd1, readbuf, 40-seekpos);
+	if (rv<0) {
+		err(1, "%s: read", file1);
+	}	
+	readbuf[40] = 0;
 	
-	// if (strcmp(readbuf, &writebuf1[seekpos]))
-	// 	errx(1, "Buffer data mismatch for %s!", file1);
+	if (strcmp(readbuf, &writebuf1[seekpos]))
+		errx(1, "Buffer data mismatch for %s!", file1);
 	
 	/* Read and test the data from the second file */
-	// rv = read(fd2, readbuf, 40-seekpos);
-	// if (rv<0) {
-	// 	err(1, "%s: read", file2);
-	// }
-	// readbuf[40] = 0;
+	rv = read(fd2, readbuf, 40-seekpos);
+	if (rv<0) {
+		err(1, "%s: read", file2);
+	}
+	readbuf[40] = 0;
 
-	// if (strcmp(readbuf, &writebuf2[seekpos])) {
-	// 	printf("Expected: \"%s\", actual: \"%s\"\n", writebuf2,
-	// 	       readbuf);
-	// 	errx(1, "Buffer data mismatch for %s!", file2);
-	// }
+	if (strcmp(readbuf, &writebuf2[seekpos])) {
+		printf("Expected: \"%s\", actual: \"%s\"\n", writebuf2,
+		       readbuf);
+		errx(1, "Buffer data mismatch for %s!", file2);
+	}
 
 	rv = close(fd1);
 	if (rv<0) {
@@ -361,9 +359,8 @@ simultaneous_write_test()
 int
 main()
 {
-
 	test_openfile_limits();
-	printf("Passed Part 1 of fsyscalltest\n");	
+	printf("Passed Part 1 of fsyscalltest\n");
 	
 	simple_test();
 	printf("Passed Part 2 of fsyscalltest\n");	
