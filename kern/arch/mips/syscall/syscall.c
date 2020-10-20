@@ -154,10 +154,11 @@ syscall(struct trapframe *tf)
 				 	&retval);
 		break;
 
-		// case SYS_dup2:
-		// err = sys_dup2((userptr_t)tf->tf_a0,
-		// 		 (userptr_t)tf->tf_a1);
-		// break;
+		case SYS_dup2:
+		err = sys_dup2(tf->tf_a0,
+				 tf->tf_a1, 
+				 &retval);
+		break;
 
 		case SYS_chdir:
 		err = sys_chdir((const_userptr_t)tf->tf_a0,

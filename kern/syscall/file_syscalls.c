@@ -160,11 +160,12 @@ sys_close(int fd, int *retval)
 	return err;
 }
 
-// int
-// sys_dup2(int oldfd, int newfd)
-// {
-// 	return 0;
-// }
+int
+sys_dup2(int oldfd, int newfd, int *retval)
+{
+	int err = 0;
+	return err;
+}
 
 
 
