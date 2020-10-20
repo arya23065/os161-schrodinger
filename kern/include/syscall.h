@@ -77,7 +77,7 @@ int sys_close(int fd, int *retval);
  * System calls to handle the directory of the current process
  */
 
-// int sys_chdir(const char *pathname); 
+int sys_chdir(const_userptr_t pathname, int *retval); 
 // int sys__getcwd(char *buf, size_t buflen); 
 
 
