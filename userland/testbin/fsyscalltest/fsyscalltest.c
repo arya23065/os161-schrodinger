@@ -330,27 +330,27 @@ simultaneous_write_test()
 
 // }
 
-// /*
-//  * This test is really simple. We want it to run on emufs,
-//  * and we can't do more sophisticated things with directories
-//  * here. 
-//  */
-// static void
-// dir_test()
-// {
-// 	char chdir_name[] = "testbin";
-// 	char buf[NAME_MAX+1];
-// 	int ret;
+/*
+ * This test is really simple. We want it to run on emufs,
+ * and we can't do more sophisticated things with directories
+ * here. 
+ */
+static void
+dir_test()
+{
+	char chdir_name[] = "testbin";
+	char buf[NAME_MAX+1];
+	int ret;
 
-// 	_getcwd(buf, NAME_MAX);
-// 	printf("__getcwd returned: %s\n", buf);
+	_getcwd(buf, NAME_MAX);
+	printf("__getcwd returned: %s\n", buf);
 
-// 	ret = chdir(chdir_name);
-// 	if(ret)
-// 	{
-// 		err(1, "chdir into %s", chdir_name);
-// 	}
-// }
+	ret = chdir(chdir_name);
+	if(ret)
+	{
+		err(1, "chdir into %s", chdir_name);
+	}
+}
 			
 
 /* This test takes no arguments, so we can run it before argument passing
@@ -361,9 +361,9 @@ main()
 {
 	test_openfile_limits();
 	printf("Passed Part 1 of fsyscalltest\n");
-
+	
 	simple_test();
-	printf("Passed Part 2 of fsyscalltest\n");
+	printf("Passed Part 2 of fsyscalltest\n");	
 	
 	simultaneous_write_test();
 	printf("Passed Part 3 of fsyscalltest\n");
@@ -371,8 +371,8 @@ main()
 	// test_dup2();
 	// printf("Passed Part 4 of fsyscalltest\n");
 
-	// dir_test();
-	// printf("Passed Part 5 of fsyscalltest\n");
+	dir_test();
+	printf("Passed Part 5 of fsyscalltest\n");
 	
 	printf("All done!\n");
 	

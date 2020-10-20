@@ -75,19 +75,22 @@ sys_write(int fd, const void *buf, size_t nbytes, int *retval)
 int
 sys_lseek(int fd, off_t pos, int whence, int *retval)
 {
-	*retval = -1; 
+	// int err = 0; 
 
 	if (fd >= OPEN_MAX || fd < 0 || curproc->p_open_filetable->open_files[fd] == NULL) {
+		*retval = -1; 
 		return EBADF; 
 	}
 
 	bool file_supports_seeking = VOP_ISSEEKABLE(curproc->p_open_filetable->open_files[fd]->vnode);
 
 	if (!file_supports_seeking) {
+		*retval = -1; 
 		return ESPIPE; 
 	}
 
 	if (whence != SEEK_SET && whence != SEEK_CUR && whence != SEEK_END) {
+		*retval = -1; 
 		return EINVAL; 
 	}
 
@@ -101,6 +104,7 @@ sys_lseek(int fd, off_t pos, int whence, int *retval)
 		if (new_offset < 0) {
 			lock_release(curproc->p_open_filetable->open_files[fd]->offset_lock);
 			lock_release(curproc->p_open_filetable->open_filetable_lock);
+			*retval = -1; 
 			return EINVAL; 
 		} else {
 			curproc->p_open_filetable->open_files[fd]->offset = new_offset;
@@ -114,6 +118,7 @@ sys_lseek(int fd, off_t pos, int whence, int *retval)
 		if (new_offset < 0) {
 			lock_release(curproc->p_open_filetable->open_files[fd]->offset_lock);
 			lock_release(curproc->p_open_filetable->open_filetable_lock);
+			*retval = -1; 
 			return EINVAL; 
 		} else {
 			curproc->p_open_filetable->open_files[fd]->offset = new_offset;
@@ -129,6 +134,7 @@ sys_lseek(int fd, off_t pos, int whence, int *retval)
 		if (err) {
 			lock_release(curproc->p_open_filetable->open_files[fd]->offset_lock);
 			lock_release(curproc->p_open_filetable->open_filetable_lock);
+			*retval = -1; 
 			return err;
 		}
 
@@ -137,6 +143,7 @@ sys_lseek(int fd, off_t pos, int whence, int *retval)
 		if (new_offset < 0) {
 			lock_release(curproc->p_open_filetable->open_files[fd]->offset_lock);
 			lock_release(curproc->p_open_filetable->open_filetable_lock);
+			*retval = -1; 
 			return EINVAL; 
 		} else {
 			curproc->p_open_filetable->open_files[fd]->offset = new_offset;

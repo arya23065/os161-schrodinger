@@ -79,7 +79,7 @@ int sys_dup2(int oldfd, int newfd, int *retval);
  */
 
 int sys_chdir(const_userptr_t pathname, int *retval); 
-// int sys__getcwd(char *buf, size_t buflen); 
+int sys_getcwd(userptr_t buf, size_t buflen, int *retval); 
 
 
 

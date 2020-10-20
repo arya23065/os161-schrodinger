@@ -147,6 +147,10 @@ syscall(struct trapframe *tf)
 
 		err = sys_lseek(tf->tf_a0,
 				pos, whence, &retval);
+
+		tf->tf_v1 = retval; 
+		long high_retval = (off_t) retval >> 32;
+		retval = (int32_t) high_retval;
 		break;
 
 		case SYS_close:
@@ -165,10 +169,10 @@ syscall(struct trapframe *tf)
 				 &retval);
 		break;
 
-		// case SYS___getcwd:
-		// err = sys_getcwd((userptr_t)tf->tf_a0,
-		// 		 (userptr_t)tf->tf_a1);
-		// break;
+		case SYS_getcwd:
+		err = sys_getcwd((userptr_t)tf->tf_a0,
+				 tf->tf_a1, &retval);
+		break;
 
 	    default:
 		kprintf("Unknown syscall %d\n", callno);
