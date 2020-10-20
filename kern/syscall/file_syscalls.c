@@ -34,11 +34,27 @@ sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
 	return err;
 }
 
-// int
-// sys_read(int fd, void *buf, size_t buflen)
-// {
-// 	return 0;
-// }
+int
+sys_read(int fd, void *buf, size_t buflen, int *retval)
+{
+	void *kbuf;
+	kbuf = kmalloc(buflen);
+
+	int err = 0;
+	*retval = open_filetable_read(curproc->p_open_filetable, fd, kbuf, buflen, &err);
+
+	if (err) {
+		*retval = -1;
+		return err;
+	}
+
+	err = copyout(kbuf, (userptr_t) buf, buflen);
+
+	if (err)
+		*retval = -1;
+
+	return err;
+}
 
 int
 sys_write(int fd, const void *buf, size_t nbytes, int *retval)

@@ -38,7 +38,6 @@ simple_test()
 	if (fd<0) {
 		err(1, "%s: open for write", file);
 	}
-	printf("bhnguytfgyhfrtytytyyt: %d\n", fd);
 
 	rv = write(fd, writebuf, 40);
 	if (rv<0) {
@@ -54,12 +53,11 @@ simple_test()
 	if (fd<0) {
 		err(1, "%s: open for read", file);
 	}
-	printf("bhnguytfgyhfrtytytyyt%d\n", fd);
 
-	// rv = read(fd, readbuf, 40);
-	// if (rv<0) {
-	// 	err(1, "%s: read", file);
-	// }
+	rv = read(fd, readbuf, 40);
+	if (rv<0) {
+		err(1, "%s: read", file);
+	}
 	rv = close(fd);
 	if (rv<0) {
 		err(1, "%s: close (2nd time)", file);
@@ -160,156 +158,156 @@ simple_test()
 
 
 
-// static int openFDs[OPEN_MAX-3 + 1];
+static int openFDs[OPEN_MAX-3 + 1];
 
-// /*
-//  * This test makes sure that the underlying filetable implementation
-//  * allows us to open as many files as is allowed by the limit on the system.
-//  */
-// static void
-// test_openfile_limits()
-// {
-// 	const char *file;
-// 	int fd, rv, i;
+/*
+ * This test makes sure that the underlying filetable implementation
+ * allows us to open as many files as is allowed by the limit on the system.
+ */
+static void
+test_openfile_limits()
+{
+	const char *file;
+	int fd, rv, i;
 
-// 	file = "testfile1";
+	file = "testfile1";
 
-// 	/* We should be allowed to open this file OPEN_MAX - 3 times, 
-// 	 * because the first 3 file descriptors are occupied by stdin, 
-// 	 * stdout and stderr. 
-// 	 */
-// 	for(i = 0; i < (OPEN_MAX-3); i++)
-// 	{
-// 		fd = open(file, O_RDWR|O_CREAT|O_TRUNC, 0664);
-// 		if (fd<0)
-// 			err(1, "%s: open for %dth time", file, (i+1));
+	/* We should be allowed to open this file OPEN_MAX - 3 times, 
+	 * because the first 3 file descriptors are occupied by stdin, 
+	 * stdout and stderr. 
+	 */
+	for(i = 0; i < (OPEN_MAX-3); i++)
+	{
+		fd = open(file, O_RDWR|O_CREAT|O_TRUNC, 0664);
+		if (fd<0)
+			err(1, "%s: open for %dth time", file, (i+1));
 
-// 		if( (fd == 0) || (fd == 1) || (fd == 2))
-// 			err(1, "open for %s returned a reserved file descriptor",
-// 			    file);
+		if( (fd == 0) || (fd == 1) || (fd == 2))
+			err(1, "open for %s returned a reserved file descriptor",
+			    file);
 
-// 		/* We do not assume that the underlying system will return
-// 		 * file descriptors as consecutive numbers, so we just remember
-// 		 * all that were returned, so we can close them. 
-// 		 */
-// 		openFDs[i] = fd;
-// 	}
+		/* We do not assume that the underlying system will return
+		 * file descriptors as consecutive numbers, so we just remember
+		 * all that were returned, so we can close them. 
+		 */
+		openFDs[i] = fd;
+	}
 
-// 	/* This one should fail. */
-// 	fd = open(file, O_RDWR|O_CREAT|O_TRUNC, 0664);
-// 	if(fd > 0)
-// 		err(1, "Opening file for %dth time should fail, as %d "
-// 		    "is the maximum allowed number of open files and the "
-// 		    "first three are reserved. \n",
-// 		    (i+1), OPEN_MAX);
+	/* This one should fail. */
+	fd = open(file, O_RDWR|O_CREAT|O_TRUNC, 0664);
+	if(fd > 0)
+		err(1, "Opening file for %dth time should fail, as %d "
+		    "is the maximum allowed number of open files and the "
+		    "first three are reserved. \n",
+		    (i+1), OPEN_MAX);
 
-// 	/* Let's close one file and open another one, which should succeed. */
-// 	rv = close(openFDs[0]);
-// 	if (rv<0)
-// 		err(1, "%s: close for the 1st time", file);
+	/* Let's close one file and open another one, which should succeed. */
+	rv = close(openFDs[0]);
+	if (rv<0)
+		err(1, "%s: close for the 1st time", file);
 	
-// 	fd = open(file, O_RDWR|O_CREAT|O_TRUNC, 0664);
-// 	if (fd<0)
-// 		err(1, "%s: re-open after closing", file);
+	fd = open(file, O_RDWR|O_CREAT|O_TRUNC, 0664);
+	if (fd<0)
+		err(1, "%s: re-open after closing", file);
 
-// 	rv = close(fd);
-// 	if (rv<0)
-// 		err(1, "%s: close for the 2nd time", file);
+	rv = close(fd);
+	if (rv<0)
+		err(1, "%s: close for the 2nd time", file);
 
-// 	/* Begin closing with index "1", because we already closed the one
-// 	 * at slot "0".
-// 	 */
-// 	for(i = 1; i < OPEN_MAX - 3; i++)
-// 	{
-// 		rv = close(openFDs[i]);
-// 		if (rv<0)
-// 			err(1, "%s: close file descriptor %d", file, i);
-// 	}
-// }
+	/* Begin closing with index "1", because we already closed the one
+	 * at slot "0".
+	 */
+	for(i = 1; i < OPEN_MAX - 3; i++)
+	{
+		rv = close(openFDs[i]);
+		if (rv<0)
+			err(1, "%s: close file descriptor %d", file, i);
+	}
+}
 
-// /* Open two files, write to them, read from them, make sure the
-//  * content checks, then close them. 
-//  */
-// static void
-// simultaneous_write_test()
-// {
-//   	static char writebuf1[41] = "Cabooble-madooddle, bora-bora-bora.....\n";
-// 	static char writebuf2[41] = "Yada, yada, yada, yada, yada, yada.....\n";
-// 	static char readbuf[41];
-// 	static int seekpos = 20; // must be less than the writebuf length
+/* Open two files, write to them, read from them, make sure the
+ * content checks, then close them. 
+ */
+static void
+simultaneous_write_test()
+{
+  	static char writebuf1[41] = "Cabooble-madooddle, bora-bora-bora.....\n";
+	static char writebuf2[41] = "Yada, yada, yada, yada, yada, yada.....\n";
+	static char readbuf[41];
+	static int seekpos = 20; // must be less than the writebuf length
 
-// 	const char *file1, *file2;
-// 	int fd1, fd2, rv;
-// 	off_t lseek_ret;
+	const char *file1, *file2;
+	int fd1, fd2, rv;
+	off_t lseek_ret;
 
-// 	file1 = "testfile1";
-// 	file2 = "testfile2";
+	file1 = "testfile1";
+	file2 = "testfile2";
 
-// 	fd1 = open(file1, O_RDWR|O_CREAT|O_TRUNC, 0664);
-// 	if (fd1<0) {
-// 		err(1, "%s: open for write", file1);
-// 	}
-// 	fd2 = open(file2, O_RDWR|O_CREAT|O_TRUNC, 0664);
-// 	if (fd2<0) {
-// 		err(1, "%s: open for write", file2);
-// 	}
+	fd1 = open(file1, O_RDWR|O_CREAT|O_TRUNC, 0664);
+	if (fd1<0) {
+		err(1, "%s: open for write", file1);
+	}
+	fd2 = open(file2, O_RDWR|O_CREAT|O_TRUNC, 0664);
+	if (fd2<0) {
+		err(1, "%s: open for write", file2);
+	}
 
-// 	rv = write(fd1, writebuf1, 40);
-// 	if (rv<0) {
-// 		err(1, "%s: write", file1);
-// 	}
+	rv = write(fd1, writebuf1, 40);
+	if (rv<0) {
+		err(1, "%s: write", file1);
+	}
 
-// 	rv = write(fd2, writebuf2, 40);
-// 	if (rv<0) {
-// 		err(1, "%s: write", file2);
-// 	}
+	rv = write(fd2, writebuf2, 40);
+	if (rv<0) {
+		err(1, "%s: write", file2);
+	}
 
-// 	/* Rewind both files */
-// 	lseek_ret = lseek(fd1, -(40-seekpos), SEEK_CUR);
-// 	if (lseek_ret != seekpos) {
-// 		err(1, "%s: lseek", file1);
-// 	}
+	/* Rewind both files */
+	lseek_ret = lseek(fd1, -(40-seekpos), SEEK_CUR);
+	if (lseek_ret != seekpos) {
+		err(1, "%s: lseek", file1);
+	}
 
-// 	lseek_ret = lseek(fd2, seekpos, SEEK_SET);
-// 	if (lseek_ret != seekpos) {
-// 		err(1, "%s: lseek", file2);
-// 	}
+	lseek_ret = lseek(fd2, seekpos, SEEK_SET);
+	if (lseek_ret != seekpos) {
+		err(1, "%s: lseek", file2);
+	}
 
-// 	/* Read and test the data from the first file */
-// 	rv = read(fd1, readbuf, 40-seekpos);
-// 	if (rv<0) {
-// 		err(1, "%s: read", file1);
-// 	}	
-// 	readbuf[40] = 0;
+	/* Read and test the data from the first file */
+	rv = read(fd1, readbuf, 40-seekpos);
+	if (rv<0) {
+		err(1, "%s: read", file1);
+	}	
+	readbuf[40] = 0;
 	
-// 	if (strcmp(readbuf, &writebuf1[seekpos]))
-// 		errx(1, "Buffer data mismatch for %s!", file1);
+	if (strcmp(readbuf, &writebuf1[seekpos]))
+		errx(1, "Buffer data mismatch for %s!", file1);
 	
-// 	/* Read and test the data from the second file */
-// 	rv = read(fd2, readbuf, 40-seekpos);
-// 	if (rv<0) {
-// 		err(1, "%s: read", file2);
-// 	}
-// 	readbuf[40] = 0;
+	/* Read and test the data from the second file */
+	rv = read(fd2, readbuf, 40-seekpos);
+	if (rv<0) {
+		err(1, "%s: read", file2);
+	}
+	readbuf[40] = 0;
 
-// 	if (strcmp(readbuf, &writebuf2[seekpos])) {
-// 		printf("Expected: \"%s\", actual: \"%s\"\n", writebuf2,
-// 		       readbuf);
-// 		errx(1, "Buffer data mismatch for %s!", file2);
-// 	}
+	if (strcmp(readbuf, &writebuf2[seekpos])) {
+		printf("Expected: \"%s\", actual: \"%s\"\n", writebuf2,
+		       readbuf);
+		errx(1, "Buffer data mismatch for %s!", file2);
+	}
 
-// 	rv = close(fd1);
-// 	if (rv<0) {
-// 		err(1, "%s: close", file1);
-// 	}
+	rv = close(fd1);
+	if (rv<0) {
+		err(1, "%s: close", file1);
+	}
 
-// 	rv = close(fd2);
-// 	if (rv<0)
-// 	{
-// 		err(1, "%s: close", file2);
-// 	}
+	rv = close(fd2);
+	if (rv<0)
+	{
+		err(1, "%s: close", file2);
+	}
 
-// }
+}
 
 // static void
 // _getcwd(char *buf, int len)
@@ -361,14 +359,14 @@ simple_test()
 int
 main()
 {
-	// test_openfile_limits();
-	// printf("Passed Part 1 of fsyscalltest\n");
+	test_openfile_limits();
+	printf("Passed Part 1 of fsyscalltest\n");
 
 	simple_test();
 	printf("Passed Part 2 of fsyscalltest\n");
 	
-	// simultaneous_write_test();
-	// printf("Passed Part 3 of fsyscalltest\n");
+	simultaneous_write_test();
+	printf("Passed Part 3 of fsyscalltest\n");
 	
 	// test_dup2();
 	// printf("Passed Part 4 of fsyscalltest\n");
