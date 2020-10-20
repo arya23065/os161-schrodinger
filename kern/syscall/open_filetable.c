@@ -257,10 +257,10 @@ int open_filetable_write(struct open_filetable *open_filetable, int fd, void *bu
     return retval;
 }
 
-int open_filetable_read(struct open_filetable *open_filetable, int fd, void *buf, size_t nbytes, int *err) {
+// int open_filetable_read(struct open_filetable *open_filetable, int fd, void *buf, size_t nbytes, int *err) {
 
-    return 0;
-}
+//     return 0;
+// }
 
 
 

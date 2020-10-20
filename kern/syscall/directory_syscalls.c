@@ -28,5 +28,6 @@ sys_chdir(const_userptr_t pathname, int *retval) {
 // int
 // sys__getcwd(char *buf, size_t buflen)
 // {
+    //use vfs_getcwd
 // 	return 0;
 // }
