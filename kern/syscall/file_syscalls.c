@@ -43,15 +43,15 @@ sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
 int
 sys_write(int fd, const void *buf, size_t nbytes, int *retval)
 {
-	// void *kbuf;
-	// kbuf = kmalloc(nbytes);
-	// int err = copyin((const_userptr_t) buf, kbuf, nbytes);
-	// if (err) {
-	// 	*retval = -1;
-	// 	return err;
-	// }
-	int err = 0;
-	*retval = open_filetable_write(curproc->p_open_filetable, fd, buf, nbytes, &err);
+	void *kbuf;
+	kbuf = kmalloc(nbytes);
+	int err = copyin((const_userptr_t) buf, kbuf, nbytes);
+	if (err) {
+		*retval = -1;
+		return err;
+	}
+	err = 0;
+	*retval = open_filetable_write(curproc->p_open_filetable, fd, kbuf, nbytes, &err);
 
 	return err;
 }

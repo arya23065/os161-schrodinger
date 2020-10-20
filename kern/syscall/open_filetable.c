@@ -16,8 +16,8 @@
 // #include <vfs.h>
 // #include <vnode.h>
 //#include <kern/iovec.h>
-#include<uio.h>
-
+#include <uio.h>
+#include <current.h>
 
 
 
@@ -218,16 +218,47 @@ open_filetable_remove(struct open_filetable *open_filetable, int fd, int *err) {
     return retval;
 }
 
-int open_filetable_write(struct open_filetable *open_filetable, int fd, const void *buf, size_t nbytes, int *err) {
+int open_filetable_write(struct open_filetable *open_filetable, int fd, void *buf, size_t nbytes, int *err) {
 
     if (fd < 0 || fd >= OPEN_MAX || open_filetable->open_files[fd] == NULL) {
         *err = EBADF;
         return -1;
     }
 
-    struct iovec write_iov;
-    write_iov.iov_ubase = buf;
-    write_iov.iov_len = nbytes;
+    int retval = 0;
+
+    struct iovec *write_iov;
+    write_iov = (struct iovec*) kmalloc(sizeof(struct iovec));
+    struct uio *write_uio;
+    write_uio = (struct uio*) kmalloc(sizeof(struct uio));
+
+    uio_kinit(write_iov, write_uio, buf, nbytes, open_filetable->open_files[fd]->offset, UIO_WRITE);
+
+    lock_acquire(open_filetable->open_filetable_lock);
+
+    while (write_uio->uio_resid != 0) {
+         *err = VOP_WRITE(open_filetable->open_files[fd]->vnode, write_uio);
+         if (*err) {
+            retval = -1;
+            break;
+        }
+        retval += (nbytes - write_uio->uio_resid);
+        nbytes = write_uio->uio_resid;
+    }
+
+    if (!*err) {
+        lock_acquire(open_filetable->open_files[fd]->offset_lock);
+        open_filetable->open_files[fd]->offset = write_uio->uio_offset;
+        lock_release(open_filetable->open_files[fd]->offset_lock);
+    }
+
+    lock_release(open_filetable->open_filetable_lock);
+
+    return retval;
+}
+
+int open_filetable_read(struct open_filetable *open_filetable, int fd, void *buf, size_t nbytes, int *err) {
+
     return 0;
 }
 
