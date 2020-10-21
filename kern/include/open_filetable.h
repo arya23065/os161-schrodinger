@@ -11,10 +11,9 @@
 
 
 struct open_filetable {
-    // array of struct pointers - is it safe to assume this?
+    // array of  pointers to the file descriptors
 	struct open_file *open_files[OPEN_MAX];	
-	struct lock *open_filetable_lock;
-    int max_index_occupied; 
+	struct lock *open_filetable_lock;       // Lock for open_filetable so that operations are synchronized properly
 };
 
 struct open_filetable* open_filetable_create(void);

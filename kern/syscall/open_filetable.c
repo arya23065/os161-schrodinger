@@ -34,7 +34,6 @@ open_filetable_create() {
     }
 
     open_filetable->open_filetable_lock = lock_create("open filetable lock");
-    open_filetable->max_index_occupied = -1; 
 
     return open_filetable; 
 }
@@ -83,8 +82,7 @@ open_filetable_init(struct open_filetable *open_filetable) {
             lock_release(open_filetable->open_filetable_lock);
             return -1; 
         }
-        open_filetable->max_index_occupied++; 
-        open_filetable->open_files[open_filetable->max_index_occupied] = std_in;
+        open_filetable->open_files[0] = std_in;
     }
 
     char buf_out[32];
@@ -102,8 +100,7 @@ open_filetable_init(struct open_filetable *open_filetable) {
             lock_release(open_filetable->open_filetable_lock);
             return -1; 
         }
-        open_filetable->max_index_occupied++;
-        open_filetable->open_files[open_filetable->max_index_occupied] = std_out;
+        open_filetable->open_files[1] = std_out;
     }
 
     char buf_err[32];
@@ -121,8 +118,7 @@ open_filetable_init(struct open_filetable *open_filetable) {
             lock_release(open_filetable->open_filetable_lock);
             return -1; 
         }
-        open_filetable->max_index_occupied++; 
-        open_filetable->open_files[open_filetable->max_index_occupied] = std_err;
+        open_filetable->open_files[2] = std_err;
     }
 
     lock_release(open_filetable->open_filetable_lock); 
