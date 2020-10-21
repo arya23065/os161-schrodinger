@@ -17,10 +17,20 @@ int
 sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
 {
 	//filename is the pathname
+	if (filename == NULL) {
+		*retval = -1; 
+		return EFAULT; 
+	}
+
 	char fname [NAME_MAX];
 	int err = 0;
 
-	copyinstr(filename, fname, NAME_MAX, NULL);
+	err = copyinstr(filename, fname, NAME_MAX, NULL);
+
+	if (err) {
+		*retval = -1; 
+		return err; 
+	}
 
 	// /*
 	// ENXIO
