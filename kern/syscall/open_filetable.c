@@ -291,7 +291,7 @@ int open_filetable_read(struct open_filetable *open_filetable, int fd, void *buf
 }
 
 int open_filetable_dup2(struct open_filetable *open_filetable, int oldfd, int newfd, int *err) {
-    int retval = 0;
+    int retval = newfd;
 
     if (oldfd < 0 || newfd < 0 || 
         oldfd >= OPEN_MAX || newfd >= OPEN_MAX ||
@@ -312,6 +312,7 @@ int open_filetable_dup2(struct open_filetable *open_filetable, int oldfd, int ne
 
     KASSERT(open_filetable->open_files[newfd] == NULL);
     open_filetable->open_files[newfd] = open_filetable->open_files[oldfd];
+    VOP_INCREF(open_filetable->open_files[newfd]->vnode);
 
     lock_release(open_filetable->open_filetable_lock);
     return retval;

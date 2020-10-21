@@ -171,7 +171,6 @@ int
 sys_dup2(int oldfd, int newfd, int *retval)
 {
 	int err = 0;
-
 	*retval = open_filetable_dup2(curproc->p_open_filetable, oldfd, newfd, &err);
 	return err;
 }

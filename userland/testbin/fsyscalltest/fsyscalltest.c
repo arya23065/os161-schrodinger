@@ -76,85 +76,85 @@ simple_test()
  * and check that the written content appears in that 
  * file twice. 
  */
-// static void
-// test_dup2()
-// {
-// 	static char writebuf[41] = 
-// 		"Twiddle dee dee, Twiddle dum dum.......\n";
-// 	static char readbuf[81];
-// 	const char *file;
-// 	int fd, dupfd, rv;
+static void
+test_dup2()
+{
+	static char writebuf[41] = 
+		"Twiddle dee dee, Twiddle dum dum.......\n";
+	static char readbuf[81];
+	const char *file;
+	int fd, dupfd, rv;
 
-// 	file = "testfile";
+	file = "testfile";
 
-// 	fd = open(file, O_WRONLY|O_CREAT|O_TRUNC, 0664);
-// 	if (fd<0) {
-// 		err(1, "%s: open for write", file);
-// 	}
+	fd = open(file, O_WRONLY|O_CREAT|O_TRUNC, 0664);
+	if (fd<0) {
+		err(1, "%s: open for write", file);
+	}
 
-// 	rv = write(fd, writebuf, 40);
-// 	if (rv<0) {
-// 		err(1, "%s: write", file);
-// 	}
+	rv = write(fd, writebuf, 40);
+	if (rv<0) {
+		err(1, "%s: write", file);
+	}
 	
-// 	dupfd = fd + 1;
-// 	rv = dup2(fd, dupfd);
-// 	if (rv<0) {
-// 		err(1, "%s: dup2", file);
-// 	}
-// 	else if(rv != dupfd)
-// 	{
-// 		err(1, "dup2() returned %d, expected %d\n", rv, dupfd);
-// 	}
+	dupfd = fd + 1;
+	rv = dup2(fd, dupfd);
+	if (rv<0) {
+		err(1, "%s: dup2", file);
+	}
+	else if(rv != dupfd)
+	{
+		err(1, "dup2() returned %d, expected %d\n", rv, dupfd);
+	}
 
-// 	rv = write(dupfd, writebuf, 40);
-// 	if (rv<0) {
-// 		err(1, "%s: write via duplicated fd", file);
-// 	}
+	rv = write(dupfd, writebuf, 40);
+	if (rv<0) {
+		err(1, "%s: write via duplicated fd", file);
+	}
 
-// 	rv = close(fd);
-// 	if (rv<0) {
-// 		err(1, "%s: close (original fd)", file);
-// 	}
+	rv = close(fd);
+	if (rv<0) {
+		err(1, "%s: close (original fd)", file);
+	}
 
-// 	rv = close(dupfd);
-// 	if (rv<0) {
-// 		err(1, "%s: close (duplicate)", file);
-// 	}
+	rv = close(dupfd);
+	if (rv<0) {
+		err(1, "%s: close (duplicate)", file);
+	}
 
-// 	fd = open(file, O_RDONLY);
-// 	if (fd<0) {
-// 		err(1, "%s: open for read", file);
-// 	}
+	fd = open(file, O_RDONLY);
+	if (fd<0) {
+		err(1, "%s: open for read", file);
+	}
 
-// 	rv = read(fd, readbuf, 80);
-// 	if (rv<0) {
-// 		err(1, "%s: read", file);
-// 	}
+	rv = read(fd, readbuf, 80);
+	if (rv<0) {
+		err(1, "%s: read", file);
+	}
 
-// 	rv = close(fd);
-// 	if (rv<0) {
-// 		err(1, "%s: close (3d time)", file);
-// 	}
+	rv = close(fd);
+	if (rv<0) {
+		err(1, "%s: close (3d time)", file);
+	}
 
-// 	/* ensure null termination */
-// 	readbuf[80] = 0;
+	/* ensure null termination */
+	readbuf[80] = 0;
 
-// 	/* Compare the second half */
-// 	if (strcmp(&readbuf[40], writebuf))
-// 	{
-// 		errx(1, "Buffer data mismatch!");
-// 	}
+	/* Compare the second half */
+	if (strcmp(&readbuf[40], writebuf))
+	{
+		errx(1, "Buffer data mismatch!");
+	}
 
-// 	/* Put a null terminator after the expected
-// 	 * end of the first string and compare 
-// 	 */
-// 	readbuf[40] = 0;
-// 	if (strcmp(readbuf, writebuf)) 
-// 	{
-// 		errx(1, "Buffer data mismatch!");
-// 	}
-// }
+	/* Put a null terminator after the expected
+	 * end of the first string and compare 
+	 */
+	readbuf[40] = 0;
+	if (strcmp(readbuf, writebuf)) 
+	{
+		errx(1, "Buffer data mismatch!");
+	}
+}
 
 
 
@@ -368,8 +368,8 @@ main()
 	simultaneous_write_test();
 	printf("Passed Part 3 of fsyscalltest\n");
 	
-	// test_dup2();
-	// printf("Passed Part 4 of fsyscalltest\n");
+	test_dup2();
+	printf("Passed Part 4 of fsyscalltest\n");
 
 	dir_test();
 	printf("Passed Part 5 of fsyscalltest\n");
