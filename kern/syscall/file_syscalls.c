@@ -132,6 +132,7 @@ sys_lseek(int fd, off_t pos, int whence, off_t *retval)
 			return EINVAL; 
 		} else {
 			curproc->p_open_filetable->open_files[fd]->offset = new_offset;
+
 			*retval = new_offset; 
 		}
 
@@ -164,6 +165,7 @@ sys_lseek(int fd, off_t pos, int whence, off_t *retval)
 
 	lock_release(curproc->p_open_filetable->open_files[fd]->offset_lock);
 	lock_release(curproc->p_open_filetable->open_filetable_lock);
+
 
 	return 0;
 }

@@ -101,6 +101,8 @@ syscall(struct trapframe *tf)
 	retval = 0;
 
 	off_t pos;
+	off_t high_retval; 
+	off_t retval_64; 
 
 	switch (callno) {
 	    case SYS_reboot:
@@ -146,10 +148,10 @@ syscall(struct trapframe *tf)
 		if (copyin_err) break;
 
 		err = sys_lseek(tf->tf_a0,
-				pos, whence, &retval);
+				pos, whence, &retval_64);
 
-		tf->tf_v1 = retval; 
-		long high_retval = (off_t) retval >> 32;
+		tf->tf_v1 = (int32_t) retval_64; 
+		high_retval = retval_64 >> 32;
 		retval = (int32_t) high_retval;
 		break;
 
