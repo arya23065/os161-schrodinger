@@ -83,7 +83,7 @@ sys_write(int fd, const void *buf, size_t nbytes, int *retval)
 }
 
 int
-sys_lseek(int fd, off_t pos, int whence, int *retval)
+sys_lseek(int fd, off_t pos, int whence, off_t *retval)
 {
 	// int err = 0; 
 
