@@ -18,6 +18,8 @@
 //#include <kern/iovec.h>
 #include <uio.h>
 #include <current.h>
+#include <proc.h>
+#include <kern/iovec.h>
 
 
 
@@ -273,25 +275,35 @@ int open_filetable_read(struct open_filetable *open_filetable, int fd, void *buf
 
     struct iovec *read_iov;
     read_iov = (struct iovec*) kmalloc(sizeof(struct iovec));
+
+    read_iov->iov_len = nbytes;
+    read_iov->iov_ubase = buf;
+
     struct uio *read_uio;
     read_uio = (struct uio*) kmalloc(sizeof(struct uio));
+
+    uio_kinit(read_iov, read_uio, buf, nbytes, open_filetable->open_files[fd]->offset, UIO_READ);
 
     lock_acquire(open_filetable->open_filetable_lock);
     lock_acquire(open_filetable->open_files[fd]->offset_lock);
 
-    uio_kinit(read_iov, read_uio, buf, nbytes, open_filetable->open_files[fd]->offset, UIO_READ);
-
-    while (read_uio->uio_resid != 0) {
+    // while (read_uio->uio_resid != 0) {
          *err = VOP_READ(open_filetable->open_files[fd]->vnode, read_uio);
          if (*err) {
             retval = -1;
-            break;
-        }
-        retval += (nbytes - read_uio->uio_resid);
-        nbytes = read_uio->uio_resid;
-    }
+            lock_release(open_filetable->open_files[fd]->offset_lock);
+            lock_release(open_filetable->open_filetable_lock);
+            return retval;
+        } 
 
-    if (!*err)
+        retval = nbytes; 
+        // retval += (nbytes - read_uio->uio_resid);
+        // nbytes = read_uio->uio_resid;
+
+        // kprintf("%d\n", read_uio->uio_resid);
+    // }
+
+    // if (!*err)
         open_filetable->open_files[fd]->offset = read_uio->uio_offset;
 
     lock_release(open_filetable->open_files[fd]->offset_lock);
