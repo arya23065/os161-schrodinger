@@ -13,6 +13,7 @@ struct open_file {
     off_t offset; 
     struct vnode *vnode; 
     struct lock *offset_lock;
+    int of_refcount;
 
 };
 

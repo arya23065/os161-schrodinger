@@ -31,7 +31,8 @@ open_file_create(int status, struct vnode *vnode) {
 
     new_file->status = status; 
     new_file->offset = 0; 
-    new_file->vnode = vnode; 
+    new_file->vnode = vnode;
+    new_file->of_refcount = 1;
 
     return new_file; 
 }

@@ -36,9 +36,6 @@ open_filetable_create() {
     open_filetable->open_filetable_lock = lock_create("open filetable lock");
     open_filetable->max_index_occupied = -1; 
 
-    // filetable->open_files = array_create(); 
-    // array_init(filetable->open_files); 
-
     return open_filetable; 
 }
 
@@ -47,11 +44,9 @@ int
 open_filetable_destroy(struct open_filetable *open_filetable) {
     KASSERT(open_filetable != NULL); 
 
-    // array_destroy(filetable->open_files); 
+    for (int i = 0; i < OPEN_MAX; i++)
+        kfree(open_filetable->open_files[i]);
 
-    // idk if this needs to be done 
-    // kfree(open_filetable->open_files);
-    // open_filetable->open_files = NULL; 
     lock_destroy(open_filetable->open_filetable_lock);
 
     kfree(open_filetable); 
@@ -83,7 +78,7 @@ open_filetable_init(struct open_filetable *open_filetable) {
         return -1;
     } else {
         struct open_file *std_in; 
-        std_in = open_file_create(O_RDONLY,  console_stdin);
+        std_in = open_file_create(O_RDONLY, console_stdin);
         if (std_in == NULL) {
             lock_release(open_filetable->open_filetable_lock);
             return -1; 
@@ -143,7 +138,6 @@ int
 open_filetable_add(struct open_filetable *open_filetable, char *path, int openflags, mode_t mode, int *err) {
     KASSERT(open_filetable != NULL); 
 
-    //shouldnt have to pass in openfiletable cause there's only one!!!!!!!!!!!!!!!!
     lock_acquire(open_filetable->open_filetable_lock); 
 
     int ret_fd;
@@ -189,15 +183,16 @@ open_filetable_add(struct open_filetable *open_filetable, char *path, int openfl
 int
 open_filetable_remove(struct open_filetable *open_filetable, int fd, int *err) {
     KASSERT(open_filetable != NULL);
-    
+
     int retval = 0;
-    bool destroy_fd = false;
+
     if(fd < OPEN_MAX && fd >= 0) {
         if (open_filetable->open_files[fd] != NULL) {
-            if (open_filetable->open_files[fd]->vnode->vn_refcount == 1) destroy_fd = true;
             vfs_close(open_filetable->open_files[fd]->vnode);
+            open_filetable->open_files[fd]->of_refcount--;
 
-            if (destroy_fd) kfree(open_filetable->open_files[fd]);
+            if (open_filetable->open_files[fd]->of_refcount == 0)
+                kfree(open_filetable->open_files[fd]);
             open_filetable->open_files[fd] = NULL;
 
         }
@@ -287,24 +282,17 @@ int open_filetable_read(struct open_filetable *open_filetable, int fd, void *buf
     lock_acquire(open_filetable->open_filetable_lock);
     lock_acquire(open_filetable->open_files[fd]->offset_lock);
 
-    // while (read_uio->uio_resid != 0) {
-         *err = VOP_READ(open_filetable->open_files[fd]->vnode, read_uio);
-         if (*err) {
-            // retval = -1;
-            lock_release(open_filetable->open_files[fd]->offset_lock);
-            lock_release(open_filetable->open_filetable_lock);
-            return -1;
+
+    *err = VOP_READ(open_filetable->open_files[fd]->vnode, read_uio);
+    if (*err) {
+        lock_release(open_filetable->open_files[fd]->offset_lock);
+        lock_release(open_filetable->open_filetable_lock);
+        return -1;
         } 
 
-        retval = nbytes - read_uio->uio_resid; 
-        // retval += (nbytes - read_uio->uio_resid);
-        // nbytes = read_uio->uio_resid;
+    retval = nbytes - read_uio->uio_resid;
 
-        // kprintf("%d\n", read_uio->uio_resid);
-    // }
-
-    // if (!*err)
-        open_filetable->open_files[fd]->offset = read_uio->uio_offset;
+     open_filetable->open_files[fd]->offset = read_uio->uio_offset;
 
     lock_release(open_filetable->open_files[fd]->offset_lock);
     lock_release(open_filetable->open_filetable_lock);
@@ -327,12 +315,9 @@ int open_filetable_dup2(struct open_filetable *open_filetable, int oldfd, int ne
         return oldfd; 
     }
 
-    // lock_acquire(open_filetable->open_filetable_lock);
-
     if (open_filetable->open_files[newfd] != NULL) {
         *err = open_filetable_remove(open_filetable, newfd, err);
         if (*err) {
-            // lock_release(open_filetable->open_filetable_lock);
             return -1;
         }
     }
@@ -340,8 +325,7 @@ int open_filetable_dup2(struct open_filetable *open_filetable, int oldfd, int ne
     KASSERT(open_filetable->open_files[newfd] == NULL);
     open_filetable->open_files[newfd] = open_filetable->open_files[oldfd];
     VOP_INCREF(open_filetable->open_files[newfd]->vnode);
-
-    // lock_release(open_filetable->open_filetable_lock);
+    open_filetable->open_files[newfd]->of_refcount++;
 
     return retval;
 }
