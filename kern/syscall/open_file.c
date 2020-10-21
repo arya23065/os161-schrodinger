@@ -1,26 +1,18 @@
 
 #include <types.h>
-// #include <kern/errno.h>
-// #include <kern/fcntl.h>
-// #include <lib.h>
-// #include <uio.h>
-// #include <vfs.h>
-// #include <fs.h>
 #include <synch.h>
-// #include <vnode.h>
 #include <open_file.h>
-// #include <device.h>
-// #include <spinlock.h>
 
-
+/*
+ * Create a new open file, given the file status and vnode. A pointer 
+ * the the created open file is returned.
+ */
 struct open_file*
 open_file_create(int status, struct vnode *vnode) {
 
-    // KASSERT(status != NULL); 
     KASSERT(vnode != NULL); 
 
     struct open_file* new_file; 
-
     new_file = (struct open_file*) kmalloc(sizeof(struct open_file));
 
     if (new_file == NULL) {
@@ -29,6 +21,7 @@ open_file_create(int status, struct vnode *vnode) {
 
     new_file->offset_lock = lock_create("open file lock");
 
+    /* Initialise the values of the open file struct. A new open file will always have a reference count of 1 */
     new_file->status = status; 
     new_file->offset = 0; 
     new_file->vnode = vnode;
@@ -37,14 +30,17 @@ open_file_create(int status, struct vnode *vnode) {
     return new_file; 
 }
 
+/*
+ * Destroy an open file. The vnode is not destroyed. 
+ */
 int
 open_file_destroy(struct open_file *open_file) {
+
     KASSERT(open_file != NULL);
 
     lock_destroy(open_file->offset_lock);
-
-    //you dont destroy the vnode cause it still needs to exist!!
-
-    return 1; 
+    kfree(open_file->vnode); 
+    kfree(open_file); 
+    return 0; 
 }
 

@@ -100,6 +100,7 @@ syscall(struct trapframe *tf)
 
 	retval = 0;
 
+	/* Variables utilised to handle 64 bit argument and return value used in lseek */
 	off_t pos;
 	off_t high_retval; 
 	off_t retval_64; 
@@ -113,8 +114,6 @@ syscall(struct trapframe *tf)
 		err = sys___time((userptr_t)tf->tf_a0,
 				 (userptr_t)tf->tf_a1);
 		break;
-
-	    /* Add stuff here */
 
 		case SYS_open:
 		err = sys_open((userptr_t)tf->tf_a0,
@@ -139,17 +138,23 @@ syscall(struct trapframe *tf)
 
 		case SYS_lseek:
 
+		/* Extracting the 64 bit pos argument to lseek */
 		pos = (off_t) tf->tf_a2 << 32; 
 		pos = pos | (off_t) tf->tf_a3; 
 
 		int whence; 
+		/* The whence argument is fetched from the stack */
 		int copyin_err = copyin((const_userptr_t) tf->tf_sp+16, &whence, sizeof(int));
 
 		if (copyin_err) break;
 
+		/* retval_64 is the 64 bit return value of lseek */
 		err = sys_lseek(tf->tf_a0,
 				pos, whence, &retval_64);
 
+		/* In order to placing the higher 32 bits of the return value 
+		 * in tf_v0 and the lower 32 bits in tf_v1 
+		 */
 		tf->tf_v1 = (int32_t) retval_64; 
 		high_retval = retval_64 >> 32;
 		retval = (int32_t) high_retval;
