@@ -113,13 +113,13 @@ open_filetable_init(struct open_filetable *open_filetable) {
     strcpy(buf_err, "con:");
 
     /*initialising STDERR*/
-    if (vfs_open(buf_err, O_RDONLY, 0, &console_sterr) != 0) {
+    if (vfs_open(buf_err, O_WRONLY, 0, &console_sterr) != 0) {
         // vfs_close(console_sterr);
         lock_release(open_filetable->open_filetable_lock);
         return -1;
     } else {
         struct open_file *std_err; 
-        std_err = open_file_create(O_RDONLY,  console_sterr);
+        std_err = open_file_create(O_WRONLY,  console_sterr);
         if (std_err == NULL) {
             lock_release(open_filetable->open_filetable_lock);
             return -1; 
@@ -221,6 +221,12 @@ int open_filetable_write(struct open_filetable *open_filetable, int fd, void *bu
         return -1;
     }
 
+    int perms = open_filetable->open_files[fd]->status & O_ACCMODE;
+    if (perms == O_RDONLY) {
+        *err = EBADF;
+        return -1;
+    }
+
     int retval = 0;
 
     struct iovec *write_iov;
@@ -255,6 +261,12 @@ int open_filetable_write(struct open_filetable *open_filetable, int fd, void *bu
 int open_filetable_read(struct open_filetable *open_filetable, int fd, void *buf, size_t nbytes, int *err) {
 
     if (fd < 0 || fd >= OPEN_MAX || open_filetable->open_files[fd] == NULL) {
+        *err = EBADF;
+        return -1;
+    }
+
+    int perms = open_filetable->open_files[fd]->status & O_ACCMODE;
+    if (perms == O_WRONLY) {
         *err = EBADF;
         return -1;
     }
@@ -315,6 +327,6 @@ int open_filetable_dup2(struct open_filetable *open_filetable, int oldfd, int ne
     VOP_INCREF(open_filetable->open_files[newfd]->vnode);
 
     lock_release(open_filetable->open_filetable_lock);
-    
+
     return retval;
 }

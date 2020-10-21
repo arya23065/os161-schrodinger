@@ -94,8 +94,8 @@ sys_lseek(int fd, off_t pos, int whence, int *retval)
 		return EINVAL; 
 	}
 
-	lock_acquire(curproc->p_open_filetable->open_files[fd]->offset_lock);
 	lock_acquire(curproc->p_open_filetable->open_filetable_lock);
+	lock_acquire(curproc->p_open_filetable->open_files[fd]->offset_lock);
 
 	if (whence == SEEK_SET) {
 
