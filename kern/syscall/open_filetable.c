@@ -296,7 +296,7 @@ int open_filetable_read(struct open_filetable *open_filetable, int fd, void *buf
             return -1;
         } 
 
-        retval = nbytes; 
+        retval = nbytes - read_uio->uio_resid; 
         // retval += (nbytes - read_uio->uio_resid);
         // nbytes = read_uio->uio_resid;
 
