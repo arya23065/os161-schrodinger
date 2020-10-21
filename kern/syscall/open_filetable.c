@@ -290,10 +290,10 @@ int open_filetable_read(struct open_filetable *open_filetable, int fd, void *buf
     // while (read_uio->uio_resid != 0) {
          *err = VOP_READ(open_filetable->open_files[fd]->vnode, read_uio);
          if (*err) {
-            retval = -1;
+            // retval = -1;
             lock_release(open_filetable->open_files[fd]->offset_lock);
             lock_release(open_filetable->open_filetable_lock);
-            return retval;
+            return -1;
         } 
 
         retval = nbytes; 
@@ -322,13 +322,18 @@ int open_filetable_dup2(struct open_filetable *open_filetable, int oldfd, int ne
             return -1;
         }
 
-    lock_acquire(open_filetable->open_filetable_lock);
+    if (oldfd == newfd) {
+        *err = 0; 
+        return oldfd; 
+    }
+
+    // lock_acquire(open_filetable->open_filetable_lock);
 
     if (open_filetable->open_files[newfd] != NULL) {
-        retval = open_filetable_remove(open_filetable, newfd, err);
+        *err = open_filetable_remove(open_filetable, newfd, err);
         if (*err) {
-            lock_release(open_filetable->open_filetable_lock);
-            return retval;
+            // lock_release(open_filetable->open_filetable_lock);
+            return -1;
         }
     }
 
@@ -336,7 +341,7 @@ int open_filetable_dup2(struct open_filetable *open_filetable, int oldfd, int ne
     open_filetable->open_files[newfd] = open_filetable->open_files[oldfd];
     VOP_INCREF(open_filetable->open_files[newfd]->vnode);
 
-    lock_release(open_filetable->open_filetable_lock);
+    // lock_release(open_filetable->open_filetable_lock);
 
     return retval;
 }
