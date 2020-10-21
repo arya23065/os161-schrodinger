@@ -162,7 +162,9 @@ int
 sys_close(int fd, int *retval)
 {
 	int err = 0;
+	lock_acquire(curproc->p_open_filetable->open_filetable_lock);
 	*retval = open_filetable_remove(curproc->p_open_filetable, fd, &err);
+	lock_release(curproc->p_open_filetable->open_filetable_lock);
 	
 	return err;
 }

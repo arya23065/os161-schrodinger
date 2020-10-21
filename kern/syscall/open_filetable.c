@@ -187,7 +187,6 @@ open_filetable_add(struct open_filetable *open_filetable, char *path, int openfl
 int
 open_filetable_remove(struct open_filetable *open_filetable, int fd, int *err) {
     KASSERT(open_filetable != NULL);
-    lock_acquire(open_filetable->open_filetable_lock);
     
     int retval = 0;
     bool destroy_fd = false;
@@ -210,7 +209,6 @@ open_filetable_remove(struct open_filetable *open_filetable, int fd, int *err) {
         retval = -1;
     }
 
-    lock_release(open_filetable->open_filetable_lock);
     return retval;
 }
 
