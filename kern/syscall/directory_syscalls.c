@@ -6,6 +6,7 @@
 #include <limits.h>
 #include <vnode.h>
 #include <vfs.h>
+#include <proc.h>
 // #include <size_t.h>
 #include <uio.h>
 #include <kern/iovec.h>
@@ -50,7 +51,7 @@ sys_getcwd(userptr_t buf, size_t buflen, int *retval) {
     uio_buf->uio_offset = 0; 
     uio_buf->uio_resid = buflen; 
     uio_buf->uio_segflg = UIO_USERSPACE; 
-    uio_buf->uio_rw = UIO_READ; 
+    uio_buf->uio_rw = UIO_READ;
     uio_buf->uio_space = curproc->p_addrspace;
 
 

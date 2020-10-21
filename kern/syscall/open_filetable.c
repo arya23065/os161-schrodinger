@@ -290,5 +290,29 @@ int open_filetable_read(struct open_filetable *open_filetable, int fd, void *buf
     return retval;
 }
 
+int open_filetable_dup2(struct open_filetable *open_filetable, int oldfd, int newfd, int *err) {
+    int retval = 0;
 
+    if (oldfd < 0 || newfd < 0 || 
+        oldfd >= OPEN_MAX || newfd >= OPEN_MAX ||
+        open_filetable->open_files[oldfd] == NULL) {
+            *err = EBADF;
+            return -1;
+        }
 
+    lock_acquire(open_filetable->open_filetable_lock);
+
+    if (open_filetable->open_files[newfd] != NULL) {
+        retval = open_filetable_remove(open_filetable, newfd, err);
+        if (*err) {
+            lock_release(open_filetable->open_filetable_lock);
+            return retval;
+        }
+    }
+
+    KASSERT(open_filetable->open_files[newfd] == NULL);
+    open_filetable->open_files[newfd] = open_filetable->open_files[oldfd];
+
+    lock_release(open_filetable->open_filetable_lock);
+    return retval;
+}

@@ -309,26 +309,26 @@ simultaneous_write_test()
 
 }
 
-// static void
-// _getcwd(char *buf, int len)
-// {
-// 	int ret;
+static void
+_getcwd(char *buf, int len)
+{
+	int ret;
 
-// 	ret = __getcwd(buf, len);
-// 	if(ret < 0)
-// 	{
-// 		err(1, "__getcwd");
-// 	}
-// 	if(ret > len)
-// 	{
-// 		err(1, "Unexpected return value from __getcwd: %d\n",
-// 		    ret);
-// 	}
+	ret = __getcwd(buf, len);
+	if(ret < 0)
+	{
+		err(1, "__getcwd");
+	}
+	if(ret > len)
+	{
+		err(1, "Unexpected return value from __getcwd: %d\n",
+		    ret);
+	}
 
-// 	/* Ensure null termination. */
-// 	buf[ret] = 0;
+	/* Ensure null termination. */
+	buf[ret] = 0;
 
-// }
+}
 
 /*
  * This test is really simple. We want it to run on emufs,
