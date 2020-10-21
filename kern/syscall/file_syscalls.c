@@ -83,7 +83,7 @@ sys_write(int fd, const void *buf, size_t nbytes, int *retval)
 }
 
 int
-sys_lseek(int fd, off_t pos, int whence, int *retval)
+sys_lseek(int fd, off_t pos, int whence, off_t *retval)
 {
 	// int err = 0; 
 
@@ -132,6 +132,7 @@ sys_lseek(int fd, off_t pos, int whence, int *retval)
 			return EINVAL; 
 		} else {
 			curproc->p_open_filetable->open_files[fd]->offset = new_offset;
+
 			*retval = new_offset; 
 		}
 
@@ -164,6 +165,7 @@ sys_lseek(int fd, off_t pos, int whence, int *retval)
 
 	lock_release(curproc->p_open_filetable->open_files[fd]->offset_lock);
 	lock_release(curproc->p_open_filetable->open_filetable_lock);
+
 
 	return 0;
 }
