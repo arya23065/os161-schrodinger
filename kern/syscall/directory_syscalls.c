@@ -10,21 +10,43 @@
 // #include <size_t.h>
 #include <uio.h>
 #include <kern/iovec.h>
+#include <kern/errno.h>
 
 int
 sys_chdir(const_userptr_t pathname, int *retval) {
-    
-    char pname[PATH_MAX];
 
-	copyinstr(pathname, pname, PATH_MAX, NULL);
+    //enodev, enoent
+    //p /testbin/badcall   
+
+    if (pathname == NULL) {
+        *retval = -1; 
+        return EFAULT; 
+    }
+
+    // char buf[32]; 
+    // strcpy(buf, (char*) pathname);
+
+	// if (strlen(buf)==0) {
+    //     *retval = -1; 
+    //     return EINVAL; 
+	// }    
+
+    char pname[PATH_MAX];
+	int copy_err = copyinstr(pathname, pname, PATH_MAX, NULL);
+
+    if (copy_err) {
+        *retval = -1; 
+        return copy_err; 
+    }
 
     int err = vfs_chdir(pname); 
 
     if (err != 0) {
-        *retval = err; 
-        return -1; 
+        *retval = -1; 
+        return err; 
     }
-	
+
+    *retval = 0;	
 	return 0;
 }
 
@@ -36,6 +58,10 @@ sys_getcwd(userptr_t buf, size_t buflen, int *retval) {
 
     // copyinstr(buf, curr_dir, PATH_MAX, NULL);
     // all errors are checked by called functions
+
+    // if (buf == NULL) {
+
+    // }
 
     struct uio *uio_buf; 
     uio_buf = (struct uio*) kmalloc(sizeof(struct uio));
@@ -58,8 +84,8 @@ sys_getcwd(userptr_t buf, size_t buflen, int *retval) {
     int err = vfs_getcwd(uio_buf);
 
     if (err != 0) {
-        *retval = err; 
-        return -1; 
+        *retval = -1; 
+        return err; 
     } 
 
     *retval = buflen; 
