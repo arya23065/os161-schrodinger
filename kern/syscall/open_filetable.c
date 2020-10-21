@@ -315,5 +315,6 @@ int open_filetable_dup2(struct open_filetable *open_filetable, int oldfd, int ne
     VOP_INCREF(open_filetable->open_files[newfd]->vnode);
 
     lock_release(open_filetable->open_filetable_lock);
+    
     return retval;
 }
