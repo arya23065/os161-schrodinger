@@ -7,30 +7,22 @@
 #include <vnode.h>
 #include <vfs.h>
 #include <proc.h>
-// #include <size_t.h>
 #include <uio.h>
 #include <kern/iovec.h>
 #include <kern/errno.h>
 
+/*
+ * chdir system call: change directory
+ */
 int
 sys_chdir(const_userptr_t pathname, int *retval) {
-
-    //enodev, enoent
-    //p /testbin/badcall   
 
     if (pathname == NULL) {
         *retval = -1; 
         return EFAULT; 
     }
-
-    // char buf[32]; 
-    // strcpy(buf, (char*) pathname);
-
-	// if (strlen(buf)==0) {
-    //     *retval = -1; 
-    //     return EINVAL; 
-	// }    
-
+    
+    /* Copy the pathname into the char array pname */
     char pname[PATH_MAX];
 	int copy_err = copyinstr(pathname, pname, PATH_MAX, NULL);
 
@@ -51,27 +43,25 @@ sys_chdir(const_userptr_t pathname, int *retval) {
 }
 
 
+/*
+ * _getcwd system call: get current working directory
+ */
 int
 sys_getcwd(userptr_t buf, size_t buflen, int *retval) {
 
-    // char curr_dir[buflen];
-
-    // copyinstr(buf, curr_dir, PATH_MAX, NULL);
-    // all errors are checked by called functions
-
-    // if (buf == NULL) {
-
-    // }
-
+    /* Create the uio struct received by vfs_getcwd */
     struct uio *uio_buf; 
     uio_buf = (struct uio*) kmalloc(sizeof(struct uio));
 
+    /* Create the iovec struct received by the uio struct */
     struct iovec *iovec_buf; 
     iovec_buf = (struct iovec*) kmalloc(sizeof(struct iovec));
 
+    /* Initialising the iovec struct with len buflen */
     iovec_buf->iov_ubase = buf; 
     iovec_buf->iov_len = buflen; 
 
+    /* Initialising the uio struct to contain user process data and for reading */
     uio_buf->uio_iov = iovec_buf; 
     uio_buf->uio_iovcnt = 1; 
     uio_buf->uio_offset = 0; 
@@ -90,8 +80,5 @@ sys_getcwd(userptr_t buf, size_t buflen, int *retval) {
 
     *retval = buflen; 
 
-    // buf = uio_buf; 
-
-    //On success, __getcwd returns the length of the data returned. On error, -1 is returned, and errno is set according to the error encountered.
 	return 0;
 }
