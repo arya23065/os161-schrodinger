@@ -13,6 +13,12 @@
 #include <stat.h>
 
 
+/*
+ * Function that opens a file specified by filename.
+ * Returns 0 if the operation was successful,
+ * or errno if the operation was unsuccessful. *retval stores the file descriptor
+ * for successful opens, or -1 for unsuccessful ones.
+ */
 int
 sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
 {
@@ -37,6 +43,11 @@ sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
 	return err;
 }
 
+/*
+ * Function that reads froms a file specified by fd. We read into a kernel buffer,
+ * and copyout to buf if the operation was successful. Return 0 if successful, or errno
+ * if failed. *retval contains number of bytes read if successful read, or -1 if failed
+ */
 int
 sys_read(int fd, void *buf, size_t buflen, int *retval)
 {
@@ -59,6 +70,11 @@ sys_read(int fd, void *buf, size_t buflen, int *retval)
 	return err;
 }
 
+/*
+ * Function that writes to a file specified by fd. The data to be written is in buf,
+ * and is copied in to a kernel buffer. Return 0 if successful, or errno
+ * if failed. *retval contains number of bytes written if successful write, or -1 if failed
+ */
 int
 sys_write(int fd, const void *buf, size_t nbytes, int *retval)
 {
@@ -75,6 +91,11 @@ sys_write(int fd, const void *buf, size_t nbytes, int *retval)
 	return err;
 }
 
+/*
+ * Function changes the offset of the file specified by fd. whence determines how the new
+ * offset is determined. Return 0 on successful operation, or errno if failure. *retval
+ * contains the new offset if successful operation, or -1 otherwise.
+ */
 int
 sys_lseek(int fd, off_t pos, int whence, off_t *retval)
 {
@@ -166,6 +187,10 @@ sys_lseek(int fd, off_t pos, int whence, off_t *retval)
 	return 0;
 }
 
+/*
+ * Function that closes a file specified by fd. Return 0 if successful, or errno otherwise.
+ * *retval is 0 if successful close, or -1 otherwise.
+ */
 int
 sys_close(int fd, int *retval)
 {
@@ -177,6 +202,11 @@ sys_close(int fd, int *retval)
 	return err;
 }
 
+/*
+ * Function that duplicates oldfd so that newfd also points to the same open file as oldfd.
+ * Return 0 if successful, or errno otherwise. *retval is newfd if the operation is successful,
+ * or -1 otherwise
+ */
 int
 sys_dup2(int oldfd, int newfd, int *retval)
 {

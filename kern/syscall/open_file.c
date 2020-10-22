@@ -39,7 +39,6 @@ open_file_destroy(struct open_file *open_file) {
     KASSERT(open_file != NULL);
 
     lock_destroy(open_file->offset_lock);
-    kfree(open_file->vnode); 
     kfree(open_file); 
     return 0; 
 }

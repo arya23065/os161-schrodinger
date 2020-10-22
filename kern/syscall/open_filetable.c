@@ -22,7 +22,10 @@
 #include <kern/iovec.h>
 
 
-
+/*
+ * Create an open_filetable struct. Fucntion returns pointer to new 
+ * open_filetable struct if successful, or NULL otherwise.
+ */
 struct open_filetable*
 open_filetable_create() {       // Create new open_filetable struct pointer and return it
     struct open_filetable* open_filetable; 
@@ -38,7 +41,9 @@ open_filetable_create() {       // Create new open_filetable struct pointer and 
     return open_filetable; 
 }
 
-
+/*
+ * Destroy an open_filetable.
+ */
 int
 open_filetable_destroy(struct open_filetable *open_filetable) {     // Destroy open_filetable struct
     KASSERT(open_filetable != NULL); 
@@ -52,6 +57,10 @@ open_filetable_destroy(struct open_filetable *open_filetable) {     // Destroy o
     return 0;
 }
 
+/*
+ * Initializes an open_filetable by opening stdin, stdout and stderr. Return 0 if successful,
+ * or -1 otherwise
+ */
 int
 open_filetable_init(struct open_filetable *open_filetable) {        // Initialize stdin, stdout, stderr
     KASSERT(open_filetable != NULL); 
@@ -124,9 +133,11 @@ open_filetable_init(struct open_filetable *open_filetable) {        // Initializ
 
 }
 
-/* Returns index in open_filetable of new file
-
-*/
+/*
+ * Creates a new open_file object, and initializes the vnode for the file specified by path.
+ * Places new open_file into smallest free index in the open_filetable. Returns index of new open_file
+ * if successful, or -1 otherwise. *err is set to 0 if successful, or errno if failed.
+ */
 int 
 open_filetable_add(struct open_filetable *open_filetable, char *path, int openflags, mode_t mode, int *err) {
     KASSERT(open_filetable != NULL); 
@@ -173,6 +184,10 @@ open_filetable_add(struct open_filetable *open_filetable, char *path, int openfl
 
 }
 
+/*
+ * Close an open_file. Destroy the open_file if there are no more references to it.
+ * Returns 0 if successful, or -1 otherwise. *err is set to 0 if successful, or errno if failed.
+ */
 int
 open_filetable_remove(struct open_filetable *open_filetable, int fd, int *err) {
     KASSERT(open_filetable != NULL);
@@ -185,7 +200,7 @@ open_filetable_remove(struct open_filetable *open_filetable, int fd, int *err) {
             open_filetable->open_files[fd]->of_refcount--;      // reduce reference count for open_file
 
             if (open_filetable->open_files[fd]->of_refcount == 0)
-                kfree(open_filetable->open_files[fd]);          // Free open_file if there are no more references to it
+                open_file_destroy(open_filetable->open_files[fd]);          // Free open_file if there are no more references to it
             open_filetable->open_files[fd] = NULL;
 
         }
@@ -202,6 +217,10 @@ open_filetable_remove(struct open_filetable *open_filetable, int fd, int *err) {
     return retval;
 }
 
+/*
+ * Write to the file specified by fd. The data to write is in buf. Writes upto nbytes bytes. Returns the
+ * number of bytes written if successful, or -1 if failed. *err is set to 0 if successful, or errno if failed.
+ */
 int open_filetable_write(struct open_filetable *open_filetable, int fd, void *buf, size_t nbytes, int *err) {
 
     // Check if fd is valid
@@ -252,6 +271,10 @@ int open_filetable_write(struct open_filetable *open_filetable, int fd, void *bu
     return retval;
 }
 
+/*
+ * Read from the file specified by fd. The data that is read is written into buf. Reads upto nbytes bytes. Returns the
+ * number of bytes read if successful, or -1 if failed. *err is set to 0 if successful, or errno if failed.
+ */
 int open_filetable_read(struct open_filetable *open_filetable, int fd, void *buf, size_t nbytes, int *err) {
 
     // Check if fd is valid
@@ -288,8 +311,8 @@ int open_filetable_read(struct open_filetable *open_filetable, int fd, void *buf
     if (*err) {         // Release locks, free structs, and return if error
         lock_release(open_filetable->open_files[fd]->offset_lock);
         lock_release(open_filetable->open_filetable_lock);
-        kfree(write_iov);
-        kfree(write_uio);   
+        kfree(read_iov);
+        kfree(read_uio);   
         return -1;      // Set return value to -1 if error and set errno, and return after freeing structs
         } 
 
@@ -299,12 +322,17 @@ int open_filetable_read(struct open_filetable *open_filetable, int fd, void *buf
 
     lock_release(open_filetable->open_files[fd]->offset_lock);
     lock_release(open_filetable->open_filetable_lock);
-    kfree(write_iov);
-    kfree(write_uio);           // Release locks, free structs, and return
+    kfree(read_iov);
+    kfree(read_uio);           // Release locks, free structs, and return
 
     return retval;
 }
 
+/*
+ * Duplicate an open_file so that open_files[newfd] = open_files[oldfd] for open_filetable. Both
+ * fd's must point to the same open_file. Return newfd if successful, or -1 otherwise. *err is set to
+ * 0 if successful, or errno if failed.
+ */
 int open_filetable_dup2(struct open_filetable *open_filetable, int oldfd, int newfd, int *err) {
     int retval = newfd;
 
