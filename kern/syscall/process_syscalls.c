@@ -5,9 +5,12 @@
 #include <syscall.h>
 #include <proc.h>
 #include <current.h>
+#include <unistd.h>
 
 
-int 
-sys_getpid() {
-    return curproc->p_pid;  
+
+pid_t 
+sys_getpid(int *retval) {
+    *retval = curproc->p_pid;  
+    return 0;   // sys_getpid does not fail
 }

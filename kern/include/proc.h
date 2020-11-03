@@ -68,7 +68,7 @@ struct proc
 	struct proc *pid_table[__PID_MAX];
 	struct spinlock pid_table_lock;
 	// int max_pid_occupied; 
-	int p_pid;
+	pid_t p_pid;
 };
 
 /* This is the process structure for the kernel and for kernel-only threads. */

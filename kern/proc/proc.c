@@ -184,6 +184,7 @@ proc_destroy(struct proc *proc)
 
 	// pid spinlock not cleaned cause each process' spinlock is the same pid spinlock passed via a pointer 
 	kfree(proc->pid_table_lock);
+	
 	kfree(proc->p_name);
 	kfree(proc);
 }
@@ -246,6 +247,7 @@ proc_create_runprogram(const char *name)
 	/* Giving newproc access to the pid table */
 	lock_acquire(newproc->pid_table_lock); 
 	newproc->p_pid = curproc->p_pid + 1; 
+	newproc->pid_table = curproc->pid_table; 
 	newproc->pid_table[curproc->p_pid + 1] = &newproc; 
 	lock_release(newproc->pid_table_lock); 
 
