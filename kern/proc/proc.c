@@ -88,10 +88,10 @@ proc_create(const char *name)
 	proc->p_cwd = NULL;
 
 	/* Open filetable */
-	// proc->p_file_descriptor_table = NULL;
-	// proc->max_index_occupied = -1; 
-
 	proc->p_open_filetable = open_filetable_create(); 
+
+	/* PID table lock */
+	spinlock_init(&proc->pid_table_lock);
 
 	return proc;
 }
@@ -177,18 +177,13 @@ proc_destroy(struct proc *proc)
 
 	}
 
-	// filetable_destroy(proc->p_filetable)
-	// proc->p_filetable = NULL;
-
-	// for (int i = 0; i < OPEN_MAX; i++) {
-	// 	proc->p_file_descriptor_table[i] = NULL; 
-	// }
 	open_filetable_destroy(proc->p_open_filetable);
 
 	threadarray_cleanup(&proc->p_threads);
 	spinlock_cleanup(&proc->p_lock);
 
-
+	// pid spinlock not cleaned cause each process' spinlock is the same pid spinlock passed via a pointer 
+	kfree(proc->pid_table_lock);
 	kfree(proc->p_name);
 	kfree(proc);
 }
@@ -203,6 +198,12 @@ proc_bootstrap(void)
 	if (kproc == NULL) {
 		panic("proc_create for kproc failed\n");
 	}
+
+	kproc->p_pid = __PID_MIN; 
+	lock_acquire(kproc->pid_table_lock); 
+	kproc->pid_table[__PID_MIN] = &kproc; // the PID table for the indices before this will be empty 
+	// changes made to proc_create_runprogram to give the new process access to the pid table, add to fork as well 
+	lock_release(kproc->pid_table_lock); 
 }
 
 /*
@@ -240,10 +241,13 @@ proc_create_runprogram(const char *name)
 	spinlock_release(&curproc->p_lock);
 
 	/* Add standard open files to the process' filetable*/
-	// newproc->p_filetable = filetable_create();
-	// filetable_init(newproc->p_filetable);
-
 	open_filetable_init(newproc->p_open_filetable); 
+
+	/* Giving newproc access to the pid table */
+	lock_acquire(newproc->pid_table_lock); 
+	newproc->p_pid = curproc->p_pid + 1; 
+	newproc->pid_table[curproc->p_pid + 1] = &newproc; 
+	lock_release(newproc->pid_table_lock); 
 
 	return newproc;
 }
