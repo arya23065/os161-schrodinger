@@ -40,7 +40,6 @@
 #include <spinlock.h>
 #include <thread.h> /* required for struct threadarray */
 #include <limits.h>
-#include <pid_table.h>
 // #include <open_filetable.h>
 // #include <fcntl.h>
 // #include <cdefs.h>
@@ -72,9 +71,6 @@ struct proc
 
 /* This is the process structure for the kernel and for kernel-only threads. */
 extern struct proc *kproc;
-
-/* This is the pid table structure for the kernel and for kernel-only threads. */
-extern struct pid_table *kpid_table;
 
 /* Call once during system startup to allocate data structures. */
 void proc_bootstrap(void);

@@ -49,6 +49,7 @@
 #include <syscall.h>
 #include <test.h>
 #include <version.h>
+#include <pid_table.h>
 #include "autoconf.h"  // for pseudoconfig
 
 
@@ -150,6 +151,7 @@ shutdown(void)
 
 	kprintf("Shutting down.\n");
 
+	pid_table_destroy();
 	vfs_clearbootfs();
 	vfs_clearcurdir();
 	vfs_unmountall();

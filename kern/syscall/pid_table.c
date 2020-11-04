@@ -8,7 +8,7 @@
 
 
 struct pid_table*
-pid_table_create() {
+pid_table_init() {
 
     struct pid_table *new_pid_table; 
 
@@ -22,7 +22,7 @@ pid_table_create() {
     return pid_table; 
 }
 
-int 
+void 
 pid_table_destroy(struct pid_table *pid_table) {
 
     KASSERT(pid_table != NULL); 

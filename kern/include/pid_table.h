@@ -15,8 +15,11 @@ struct pid_table
 	struct lock *pid_table_lock;
 };
 
-struct pid_table *pid_table_create();
-int pid_table_destroy(struct pid_table *pid_table);
+/* This is the pid table structure for the kernel and for kernel-only threads. */
+extern struct pid_table *kpid_table;
+
+struct pid_table *pid_table_init();
+void pid_table_destroy(struct pid_table *pid_table);
 int pid_table_add(struct proc *proc, int *err);
 
 
