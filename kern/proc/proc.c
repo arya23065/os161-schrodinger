@@ -183,7 +183,7 @@ proc_destroy(struct proc *proc)
 	spinlock_cleanup(&proc->p_lock);
 
 	// pid spinlock not cleaned cause each process' spinlock is the same pid spinlock passed via a pointer 
-	kfree(proc->pid_table_lock);
+	// kfree(proc->pid_table);
 	
 	kfree(proc->p_name);
 	kfree(proc);

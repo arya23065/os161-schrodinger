@@ -66,7 +66,7 @@ struct proc
 	struct open_filetable *p_open_filetable;
 
 	struct proc *pid_table[__PID_MAX];
-	struct spinlock pid_table_lock;
+	struct lock pid_table_lock;
 	// int max_pid_occupied; 
 	pid_t p_pid;
 };
