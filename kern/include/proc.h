@@ -40,6 +40,7 @@
 #include <spinlock.h>
 #include <thread.h> /* required for struct threadarray */
 #include <limits.h>
+#include <pid_table.h>
 // #include <open_filetable.h>
 // #include <fcntl.h>
 // #include <cdefs.h>
@@ -62,17 +63,18 @@ struct proc
 	/* VFS */
 	struct vnode *p_cwd; /* current working directory */
 
-	/* add more material here as needed */
+	/* The current process' open filetable */
 	struct open_filetable *p_open_filetable;
 
-	struct proc *pid_table[__PID_MAX];
-	struct lock pid_table_lock;
-	// int max_pid_occupied; 
+	/* The current process' pid */
 	pid_t p_pid;
 };
 
 /* This is the process structure for the kernel and for kernel-only threads. */
 extern struct proc *kproc;
+
+/* This is the pid table structure for the kernel and for kernel-only threads. */
+extern struct pid_table *kpid_table;
 
 /* Call once during system startup to allocate data structures. */
 void proc_bootstrap(void);

@@ -51,6 +51,7 @@
 #include <open_filetable.h>
 // #include <open_file.h>
 #include <synch.h>
+#include <pid_table.h>
 
 
 
@@ -58,6 +59,11 @@
  * The process for the kernel; this holds all the kernel-only threads.
  */
 struct proc *kproc;
+
+/*
+ * The pid table for the kernel.
+ */
+struct pid_table *kpid_table;
 
 /*
  * Create a proc structure.
@@ -89,9 +95,6 @@ proc_create(const char *name)
 
 	/* Open filetable */
 	proc->p_open_filetable = open_filetable_create(); 
-
-	/* PID table lock */
-	spinlock_init(&proc->pid_table_lock);
 
 	return proc;
 }
@@ -181,9 +184,6 @@ proc_destroy(struct proc *proc)
 
 	threadarray_cleanup(&proc->p_threads);
 	spinlock_cleanup(&proc->p_lock);
-
-	// pid spinlock not cleaned cause each process' spinlock is the same pid spinlock passed via a pointer 
-	// kfree(proc->pid_table);
 	
 	kfree(proc->p_name);
 	kfree(proc);
@@ -200,11 +200,15 @@ proc_bootstrap(void)
 		panic("proc_create for kproc failed\n");
 	}
 
-	kproc->p_pid = __PID_MIN; 
-	lock_acquire(kproc->pid_table_lock); 
-	kproc->pid_table[__PID_MIN] = &kproc; // the PID table for the indices before this will be empty 
-	// changes made to proc_create_runprogram to give the new process access to the pid table, add to fork as well 
-	lock_release(kproc->pid_table_lock); 
+	// check whether we shoudl malloc space for this here or if its okay if its done in init itself (which returns a pointer)
+	kpid_table = pid_table_create(); 
+
+	int* err = 0; 
+	kproc->p_pid = pid_table_add(kproc, err); 
+
+	if (*err) {
+		panic("proc_create for kproc failed (pid table failed)\n");
+	}
 }
 
 /*
@@ -244,12 +248,13 @@ proc_create_runprogram(const char *name)
 	/* Add standard open files to the process' filetable*/
 	open_filetable_init(newproc->p_open_filetable); 
 
-	/* Giving newproc access to the pid table */
-	lock_acquire(newproc->pid_table_lock); 
-	newproc->p_pid = curproc->p_pid + 1; 
-	newproc->pid_table = curproc->pid_table; 
-	newproc->pid_table[curproc->p_pid + 1] = &newproc; 
-	lock_release(newproc->pid_table_lock); 
+	/* Add the newproc to the pid table */
+	int* err = 0; 
+	kproc->p_pid = pid_table_add(newproc, err); 
+	
+	if (*err) {
+		return NULL; 
+	}
 
 	return newproc;
 }
