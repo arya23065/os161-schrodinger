@@ -85,6 +85,8 @@ int sys_getcwd(userptr_t buf, size_t buflen, int *retval);
  */
 
 int sys_fork(struct trapframe *tf, pid_t *retval);
+void child_fork(void *tf, unsigned long arg); 
+
 
 
 #endif /* _SYSCALL_H_ */

@@ -49,7 +49,7 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
     
     newproc->p_addrspace = new_addrspace;
 
-    *retval = pid_table_add(newproc, &err);
+    *retval = pid_table_add(newproc, &err); // make sure that you remove this process from the pid table if there's an error in any of the functions used after
 
     if (err) {
         proc_destroy(newproc);
@@ -63,21 +63,18 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
     new_tf.tf_epc += 4;     // Setting program counter so that same instruction doesn't run again
 
     // Copy kernel thread; return to user mode
-
+    thread_fork(newproc->p_name, newproc, child_fork(&new_tf, NULL), (void*) &new_tf, NULL); 
     // return 
     return 0;
-    // copy file table - shallow copy of open files, deep copy of file table
-    // copy architectural state 
     // copy kernel thread 
     // both parent and child need to return to user mode 
-
 }
 
-void child_fork(void *as, unsigned long tf) {
+void child_fork(void *tf, unsigned long arg) {
     struct trapframe *new_tf;
     new_tf = tf;
 
-    struct addrspace *new_as = (struct addrspace *) as;
-
-
+    // struct addrspace *new_as = (struct addrspace *) as;
+    // as_activate(); 
+    mips_usermode(new_tf); 
 }
