@@ -20,7 +20,7 @@ extern struct pid_table *kpid_table;
 
 struct pid_table *pid_table_init();
 void pid_table_destroy(struct pid_table *pid_table);
-int pid_table_add(struct proc *proc, int *err);
+pid_t pid_table_add(struct proc *proc, int *err);
 
 
 #endif /* _PID_TABLE_H_ */

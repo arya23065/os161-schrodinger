@@ -151,10 +151,10 @@ shutdown(void)
 
 	kprintf("Shutting down.\n");
 
-	pid_table_destroy();
 	vfs_clearbootfs();
 	vfs_clearcurdir();
 	vfs_unmountall();
+	pid_table_destroy();
 
 	thread_shutdown();
 

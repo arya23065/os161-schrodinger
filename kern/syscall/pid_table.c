@@ -27,8 +27,10 @@ pid_table_destroy(struct pid_table *pid_table) {
 
     KASSERT(pid_table != NULL); 
 
-    for (int i = 0; i < PID_MAX; i++)
-        kfree(pid_table->pid_array[i]);
+    for (int i = 0; i < PID_MAX; i++) {
+        if (pid_table->pid_array[i] != NULL)
+            kfree(pid_table->pid_array[i]);
+    }
 
     lock_destroy(pid_table->pid_table_lock);
 
