@@ -87,6 +87,7 @@ int sys_getcwd(userptr_t buf, size_t buflen, int *retval);
 int sys_fork(struct trapframe *tf, pid_t *retval);
 void child_fork(void *tf, unsigned long arg); 
 int sys_execv(const_userptr_t program, const_userptr_t args, int *retval);
+int sys_getpid(pid_t* retval);
 
 
 

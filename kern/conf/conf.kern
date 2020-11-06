@@ -386,7 +386,6 @@ file      syscall/open_file.c
 file      syscall/open_filetable.c
 file      syscall/file_syscalls.c
 file      syscall/directory_syscalls.c
-file      syscall/directory_syscalls.c
 file      syscall/process_syscalls.c
 
 

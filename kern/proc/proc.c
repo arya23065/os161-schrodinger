@@ -61,11 +61,6 @@
 struct proc *kproc;
 
 /*
- * The pid table for the kernel.
- */
-struct pid_table *kpid_table;
-
-/*
  * Create a proc structure.
  */
 static
@@ -201,14 +196,14 @@ proc_bootstrap(void)
 	}
 
 	// check whether we shoudl malloc space for this here or if its okay if its done in init itself (which returns a pointer)
-	kpid_table = pid_table_create(); 
+	// kpid_table = pid_table_init(); 
 
-	int* err = 0; 
-	kproc->p_pid = pid_table_add(kproc, err); 
+	// int* err = 0; 
+	// kproc->p_pid = pid_table_add(kproc, err); 
 
-	if (*err) {
-		panic("proc_create for kproc failed (pid table failed)\n");
-	}
+	// if (*err) {
+	// 	panic("proc_create for kproc failed (pid table failed)\n");
+	// }
 }
 
 /*
@@ -249,10 +244,10 @@ proc_create_runprogram(const char *name)
 	open_filetable_init(newproc->p_open_filetable); 
 
 	/* Add the newproc to the pid table */
-	int* err = 0; 
-	kproc->p_pid = pid_table_add(newproc, err); 
+	int err = 0; 
+	newproc->p_pid = pid_table_add(newproc, &err); 
 	
-	if (*err) {
+	if (err) {
 		return NULL; 
 	}
 

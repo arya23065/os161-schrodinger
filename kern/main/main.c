@@ -72,7 +72,6 @@ static const char harvard_copyright[] =
     "Copyright (c) 2000, 2001-2005, 2008-2011, 2013, 2014\n"
     "   President and Fellows of Harvard College.  All rights reserved.\n";
 
-
 /*
  * Initial boot sequence.
  */
@@ -211,6 +210,12 @@ void
 kmain(char *arguments)
 {
 	boot();
+
+	pid_table_init(); 
+
+	// lock_acquire(kpid_table->pid_table_lock);
+	// kpid_table->pid_array[1] = kproc;
+	// lock_release(kpid_table->pid_table_lock);
 
 	menu(arguments);
 

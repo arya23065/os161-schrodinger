@@ -5,10 +5,12 @@
 #include <syscall.h>
 #include <proc.h>
 #include <current.h>
-#include <unistd.h>
+#include <kern/unistd.h>
 #include <addrspace.h>
-#include <proc.h>
 #include <pid_table.h>
+#include <open_filetable.h>
+#include <open_file.h>
+#include <mips/trapframe.h>
 
 
 int 
@@ -26,57 +28,63 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
     char* name = strcat(curproc->p_name, "_child"); 
     struct proc *newproc; 
 
-    newproc = proc_create(name);
+    newproc = proc_create_runprogram(name);
 
     // Copy open file table so that each fd points to same open file
-    int i = 0;
+    int i = 3;
     while (i < OPEN_MAX) {
-        newproc->open_filetable->open_files[i] = curproc->p_one_filetable->open_files[i];
+        if (curproc->p_open_filetable->open_files[i] != NULL) {
+            newproc->p_open_filetable->open_files[i] = curproc->p_open_filetable->open_files[i];
+
+            lock_acquire(curproc->p_open_filetable->open_files[i]->offset_lock);
+            curproc->p_open_filetable->open_files[i]->of_refcount++;
+            lock_release(curproc->p_open_filetable->open_files[i]->offset_lock);
+        }
         i++;
     }
 
     // copy architectural state
-    spinlock_acquire(newproc->p_lock);
+    spinlock_acquire(&newproc->p_lock);
+    struct addrspace *parent_addrspace = proc_getas();
     struct addrspace *new_addrspace = kmalloc(sizeof(struct addrspace));
-    err = as_copy(curproc->p_addrspace, &*new_addrspace);
-    spinlock_release(newproc->p_lock);
-
+    err = as_copy(parent_addrspace, &new_addrspace);
     if (err) {
-        proc_destroy(newproc);
+        pid_table_delete(newproc->p_pid);
         *retval = -1;
         return err;
     }
     
     newproc->p_addrspace = new_addrspace;
-
-    *retval = pid_table_add(newproc, &err); // make sure that you remove this process from the pid table if there's an error in any of the functions used after
+    spinlock_release(&newproc->p_lock);
 
     if (err) {
-        proc_destroy(newproc);
+        pid_table_delete(newproc->p_pid);
         *retval = -1;
         return err;
     }
 
-    struct trapframe new_tf = *tf;
+    // Copy kernel thread; return to user mode
+    err = thread_fork(newproc->p_name, newproc, child_fork, tf, 0);
+
+    if (err) {
+        pid_table_delete(newproc->p_pid);
+        *retval = -1;
+        return err;
+    }
+
+    return 0;
+}
+
+void child_fork(void *tf, unsigned long arg) {
+    (void) arg;
+
+    struct trapframe new_tf = * ((struct trapframe *) tf);
     new_tf.tf_v0 = 0;
     new_tf.tf_a3 = 0;
     new_tf.tf_epc += 4;     // Setting program counter so that same instruction doesn't run again
 
-    // Copy kernel thread; return to user mode
-    thread_fork(newproc->p_name, newproc, child_fork(&new_tf, NULL), (void*) &new_tf, NULL); 
-    // return 
-    return 0;
-    // copy kernel thread 
-    // both parent and child need to return to user mode 
-}
 
-void child_fork(void *tf, unsigned long arg) {
-    struct trapframe *new_tf;
-    new_tf = tf;
-
-    // struct addrspace *new_as = (struct addrspace *) as;
-    // as_activate(); 
-    mips_usermode(new_tf); 
+    mips_usermode(&new_tf); 
 }
 
 int sys_execv(const_userptr_t program, const_userptr_t args, int *retval) {
@@ -111,5 +119,10 @@ int sys_execv(const_userptr_t program, const_userptr_t args, int *retval) {
     * 
     * 
     */
-    
+
+    (void) program;
+    (void) args;
+    (void) retval;
+
+    return 0;
 }
