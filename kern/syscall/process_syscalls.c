@@ -307,3 +307,11 @@ int sys_waitpid(pid_t pid, const_userptr_t status, int options, int *retval) {
 
     return 0; 
 }
+
+int sys__exit(int exitcode, int *retval) {
+    (void) retval; 
+    (void) exitcode; 
+
+    return 0; 
+}
+
