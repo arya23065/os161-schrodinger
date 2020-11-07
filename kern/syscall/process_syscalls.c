@@ -61,14 +61,6 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
 	}
 	spinlock_release(&newproc->p_lock);
 
-	newproc->p_pid = pid_table_add(newproc, &err); 
-	
-	if (err) {
-		kfree(newproc);
-        *retval = -1; 
-		return err; 
-	}
-
     // newproc = proc_create_runprogram(name);
 
     // if (newproc == NULL) {
@@ -78,22 +70,22 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
 
     // copy architectural state
     // spinlock_acquire(&newproc->p_lock);
-    struct addrspace *parent_addrspace = proc_getas();
-    // struct addrspace *new_addrspace = kmalloc(sizeof(struct addrspace));
-    if (parent_addrspace == NULL) {
-        pid_table_delete(newproc->p_pid);
-		kfree(newproc);
-        *retval = -1; 
-        return ENOMEM; 
-    } else {
-        err = as_copy(parent_addrspace, &newproc->p_addrspace);
-        if (err) {
-            pid_table_delete(newproc->p_pid);
-		    kfree(newproc);
-            *retval = -1;
-            return err;
-        }
+    struct addrspace *new_addrspace;
+    // if (parent_addrspace == NULL) {
+    //     pid_table_delete(newproc->p_pid);
+	// 	kfree(newproc);
+    //     *retval = -1; 
+    //     return ENOMEM; 
+    // } else {
+    err = as_copy(proc_getas(), &new_addrspace);
+    if (err) {
+        // pid_table_delete(newproc->p_pid);
+        kfree(newproc);
+        *retval = -1;
+        return err;
     }
+    newproc->p_addrspace = new_addrspace;
+
     
     // newproc->p_addrspace = new_addrspace;
     // spinlock_release(&newproc->p_lock);
@@ -120,6 +112,15 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
     struct trapframe *new_tf = kmalloc(sizeof(struct trapframe));
     memcpy(new_tf, tf, (size_t) sizeof(struct trapframe));
     // *new_tf = *tf;
+
+    newproc->p_pid = pid_table_add(newproc, &err); 
+	
+	if (err) {
+		kfree(newproc);
+        *retval = -1; 
+		return err; 
+	}
+
     err = thread_fork(newproc->p_name, newproc, child_fork, new_tf, 0);
 
     if (err) {
@@ -182,24 +183,35 @@ int sys_execv(const_userptr_t program, const_userptr_t args, int *retval) {
     * 
     */
 
-    // (void) program;
-    // (void) args;
-    // (void) retval;
+    (void) program;
+    (void) args;
+    (void) retval;
+    // int result = 0;
 
-    char *args_pointers; 
-    size_t *args_pointers_size[ARG_MAX]; 
-    char *args_strings[ARG_MAX]; 
-    size_t *args_strings_size[ARG_MAX]; 
-    int args_pointers_max_index = 0; 
+    // char progname[PATH_MAX];
+    // int path_len;
 
-    int err = 0; 
+    // result = copyinstr(program, progname, PATH_MAX, &path_len);
 
-    /* Copy in the pointers to the arguments */
-    err = copyinstr(args, args_pointers, ARG_MAX, args_pointers_size[i]); 
-    if (err) {
-        *retval = -1; 
-        return err; 
-    }
+    // if (result) {
+    //     *retval = -1;
+    //     return ENOENT;
+    // }
+
+    // const_userptr_t *args_pointers[ARG_MAX / 4]; 
+    // size_t *args_pointers_size[ARG_MAX]; 
+    // char *args_strings[ARG_MAX]; 
+    // size_t *args_strings_size[ARG_MAX]; 
+    // int args_pointers_max_index = 0; 
+
+    // // int err = 0; 
+
+    // // /* Copy in the pointers to the arguments */
+    // // err = copyinstr(args, args_pointers, ARG_MAX, args_pointers_size[i]); 
+    // // if (err) {
+    // //     *retval = -1; 
+    // //     return err; 
+    // // }
     // for (int i = 0; i < ARG_MAX; i++) {
     //     if (args[i] == NULL) {
     //         args_pointers_max_index = i - 1;    // if argspointer max index is null there arent any arguments  
@@ -213,15 +225,72 @@ int sys_execv(const_userptr_t program, const_userptr_t args, int *retval) {
     //     }
     // }
 
-    for (int i = 0; i < args_pointers_max_index; i++) {
-        err = copyinstr(args_pointers[i], args_strings[i], ARG_MAX, args_strings_size[i]); 
-        if (err) {
-            *retval = -1; 
-            return err; 
-        }
-    }
+    // // for (int i = 0; i < args_pointers_max_index; i++) {
+    // //     err = copyinstr(args_pointers[i], args_strings[i], ARG_MAX, args_strings_size[i]); 
+    // //     if (err) {
+    // //         *retval = -1; 
+    // //         return err; 
+    // //     }
+    // // }
 
+    // // int i = 0;
 
+    // // while (1) {
+    // //     err = copyin(args + i * 4, args_pointers[i], 4);
+    // //     if (args_pointers[i] = 0)
+    // //         break;
+    // // }
+
+    // struct addrspace *as;
+	// struct vnode *v;
+	// vaddr_t entrypoint, stackptr;
+
+	// /* Open the file. */
+	// result = vfs_open(progname, O_RDONLY, 0, &v);
+	// if (result) {
+	// 	return result;
+	// }
+
+	// /* We should be a new process. */
+	// KASSERT(proc_getas() == NULL);
+
+	// /* Create a new address space. */
+	// as = as_create();
+	// if (as == NULL) {
+	// 	vfs_close(v);
+	// 	return ENOMEM;
+	// }
+
+	// /* Switch to it and activate it. */
+	// proc_setas(as);
+	// as_activate();
+
+	// /* Load the executable. */
+	// result = load_elf(v, &entrypoint);
+	// if (result) {
+	// 	/* p_addrspace will go away when curproc is destroyed */
+	// 	vfs_close(v);
+	// 	return result;
+	// }
+
+	// /* Done with the file now. */
+	// vfs_close(v);
+
+	// /* Define the user stack in the address space */
+	// result = as_define_stack(as, &stackptr);
+	// if (result) {
+	// 	/* p_addrspace will go away when curproc is destroyed */
+	// 	return result;
+	// }
+
+	// /* Warp to user mode. */
+	// enter_new_process(0 /*argc*/, NULL /*userspace addr of argv*/,
+	// 		  NULL /*userspace addr of environment*/,
+	// 		  stackptr, entrypoint);
+
+	// /* enter_new_process does not return. */
+	// panic("enter_new_process returned\n");
+	// return EINVAL;
 
 
 

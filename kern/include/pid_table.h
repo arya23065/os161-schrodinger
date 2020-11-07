@@ -11,7 +11,7 @@
  */
 struct pid_table
 {
-	struct proc *pid_array[PID_MAX];
+	struct proc *pid_array[PID_MAX + 1];
 	struct lock *pid_table_lock;
 };
 

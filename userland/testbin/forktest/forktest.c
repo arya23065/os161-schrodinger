@@ -159,19 +159,19 @@ test(int nowait)
 	pid2 = dofork();
 	putchar('2');
 	check();
-	pid3 = dofork();
-	putchar('3');
-	check();
+	// pid3 = dofork();
+	// putchar('3');
+	// check();
 
 	printf("Finished check\n"); 
-	// (void) pid3; 
-	// (void) pid2; 
+	(void) pid3; 
+	(void) pid2; 
 
 	/*
 	 * These must be called in reverse order to avoid waiting
 	 * improperly.
 	 */
-	dowait(nowait, pid3);
+	// dowait(nowait, pid3);
 	dowait(nowait, pid2);
 	dowait(nowait, pid1);
 	dowait(nowait, pid0);
