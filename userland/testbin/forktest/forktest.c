@@ -79,8 +79,8 @@ check(void)
 	// printf("! \n"); 
 
 	/* Make sure each fork has its own address space. */
-	// for (i=0; i<800; i++) {
-	for (i=0; i<5; i++) {
+	for (i=0; i<800; i++) {
+	// for (i=0; i<5; i++) {
 		volatile int seenpid;
 		seenpid = mypid;
 		if (seenpid != getpid()) {
