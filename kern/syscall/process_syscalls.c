@@ -228,3 +228,7 @@ int sys_execv(const_userptr_t program, const_userptr_t args, int *retval) {
 
     return 0;
 }
+
+int sys_waitpid(pid_t pid, int *status, int options, &retval) {
+
+}
