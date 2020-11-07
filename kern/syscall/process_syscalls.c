@@ -182,9 +182,49 @@ int sys_execv(const_userptr_t program, const_userptr_t args, int *retval) {
     * 
     */
 
-    (void) program;
-    (void) args;
-    (void) retval;
+    // (void) program;
+    // (void) args;
+    // (void) retval;
+
+    char *args_pointers; 
+    size_t *args_pointers_size[ARG_MAX]; 
+    char *args_strings[ARG_MAX]; 
+    size_t *args_strings_size[ARG_MAX]; 
+    int args_pointers_max_index = 0; 
+
+    int err = 0; 
+
+    /* Copy in the pointers to the arguments */
+    err = copyinstr(args, args_pointers, ARG_MAX, args_pointers_size[i]); 
+    if (err) {
+        *retval = -1; 
+        return err; 
+    }
+    // for (int i = 0; i < ARG_MAX; i++) {
+    //     if (args[i] == NULL) {
+    //         args_pointers_max_index = i - 1;    // if argspointer max index is null there arent any arguments  
+    //         break; 
+    //     } else {
+    //         err = copyinstr(args, args_pointers[i], ARG_MAX, args_pointers_size[i]); 
+    //         if (err) {
+    //             *retval = -1; 
+    //             return err; 
+    //         }
+    //     }
+    // }
+
+    for (int i = 0; i < args_pointers_max_index; i++) {
+        err = copyinstr(args_pointers[i], args_strings[i], ARG_MAX, args_strings_size[i]); 
+        if (err) {
+            *retval = -1; 
+            return err; 
+        }
+    }
+
+
+
+
+
 
     return 0;
 }
