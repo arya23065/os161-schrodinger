@@ -18,12 +18,18 @@ pid_table_init(void) {
         panic("Failed to initialize PID table");
     }
 
+    for (int i = 0; i <= PID_MAX; i++) {
+        kpid_table->pid_array[i] = NULL;
+    }
+
     kpid_table->pid_table_lock = lock_create("PID Table lock");
     if (kpid_table->pid_table_lock == NULL) 
         panic("Failed to initialize PID table");
 
+    lock_acquire(kpid_table->pid_table_lock);
     kpid_table->pid_array[1] = kproc;
     kproc->p_pid = 1;
+    lock_release(kpid_table->pid_table_lock);
 
     // kpid_table = new_pid_table;
 }
