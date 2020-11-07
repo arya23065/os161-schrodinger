@@ -34,8 +34,9 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
 		return ENOMEM;
 	}
 
-    char* name = strcat(curproc->p_name, "_child"); 
-    newproc->p_name = kstrdup(name);
+    // char* name = strcat(curproc->p_name, "_child"); 
+    // newproc->p_name = kstrdup(name);
+    newproc->p_name = kstrdup(curproc->p_name);
 	if (newproc->p_name == NULL) {
 		kfree(newproc);
         *retval = -1; 
@@ -110,7 +111,7 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
 
     // Copy kernel thread; return to user mode
     struct trapframe *new_tf = kmalloc(sizeof(struct trapframe));
-    memcpy(new_tf, tf, (size_t) sizeof(struct trapframe));
+    memcpy(new_tf, tf, sizeof(struct trapframe));
     // *new_tf = *tf;
 
     newproc->p_pid = pid_table_add(newproc, &err); 
