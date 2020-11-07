@@ -76,14 +76,20 @@ check(void)
 
 	mypid = getpid();
 
+	// printf("! \n"); 
+
 	/* Make sure each fork has its own address space. */
 	for (i=0; i<800; i++) {
+	// for (i=0; i<5; i++) {
 		volatile int seenpid;
 		seenpid = mypid;
 		if (seenpid != getpid()) {
-			errx(1, "pid mismatch (%d, should be %d) "
-			     "- your vm is broken!",
-			     seenpid, getpid());
+			// errx(1, "pid mismatch (%d, should be %d) "
+			//      "- your vm is broken!",
+			//      seenpid, getpid());
+				errx(1, "pid mismatch (%d, should be %d) "
+			     "- your vm is broken! the i is %d\n",
+			     seenpid, getpid(), i);
 		}
 	}
 }
@@ -101,6 +107,8 @@ static
 void
 dowait(int nowait, int pid)
 {
+	(void) nowait; 
+	(void) pid; 
 	int x;
 
 	if (pid<0) {
@@ -133,6 +141,7 @@ void
 test(int nowait)
 {
 	int pid0, pid1, pid2, pid3;
+	// int pid0;
 
 	/*
 	 * Caution: This generates processes geometrically.
@@ -153,6 +162,10 @@ test(int nowait)
 	pid3 = dofork();
 	putchar('3');
 	check();
+
+	printf("Finished check\n"); 
+	// (void) pid3; 
+	// (void) pid2; 
 
 	/*
 	 * These must be called in reverse order to avoid waiting

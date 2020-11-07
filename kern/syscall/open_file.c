@@ -43,3 +43,18 @@ open_file_destroy(struct open_file *open_file) {
     return 0; 
 }
 
+/*
+ * Increment ref count of open_file
+ */
+int
+open_file_incref(struct open_file *open_file) {
+
+    KASSERT(open_file != NULL);
+
+    lock_acquire(open_file->offset_lock);
+    open_file->of_refcount++;
+    lock_release(open_file->offset_lock);
+
+    return 0; 
+}
+

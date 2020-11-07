@@ -11,11 +11,14 @@
 #include <open_filetable.h>
 #include <open_file.h>
 #include <mips/trapframe.h>
+#include <vnode.h>
+#include <kern/errno.h>
 
 
 int 
 sys_getpid(pid_t *retval) {
     *retval = curproc->p_pid;  
+    // kprintf("in getpid - the cur process' pid is %d\n", curproc->p_pid);
     return 0;   // sys_getpid does not fail
 }
 
@@ -25,64 +28,123 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
     // copy addrs space - struct addrspace - as copy dumbvm.c 
     int err = 0;
 
-    char* name = strcat(curproc->p_name, "_child"); 
-    struct proc *newproc; 
+    struct proc *newproc = kmalloc(sizeof(*newproc));
+	if (newproc == NULL) {
+        *retval = -1; 
+		return ENOMEM;
+	}
 
-    newproc = proc_create_runprogram(name);
+    char* name = strcat(curproc->p_name, "_child"); 
+    newproc->p_name = kstrdup(name);
+	if (newproc->p_name == NULL) {
+		kfree(newproc);
+        *retval = -1; 
+		return ENOMEM;
+	}
+
+	threadarray_init(&newproc->p_threads);
+	spinlock_init(&newproc->p_lock);
+
+	/* VM fields */
+	// newproc->p_addrspace = NULL;
+
+	/* VFS fields */
+	newproc->p_cwd = NULL;
+
+	/* Open filetable */
+	newproc->p_open_filetable = open_filetable_create(); 
+
+    spinlock_acquire(&newproc->p_lock);
+	if (newproc->p_cwd != NULL) {
+		VOP_INCREF(newproc->p_cwd);
+		newproc->p_cwd = newproc->p_cwd;
+	}
+	spinlock_release(&newproc->p_lock);
+
+	newproc->p_pid = pid_table_add(newproc, &err); 
+	
+	if (err) {
+		kfree(newproc);
+        *retval = -1; 
+		return err; 
+	}
+
+    // newproc = proc_create_runprogram(name);
+
+    // if (newproc == NULL) {
+    //     *retval = -1; 
+    //     return NULL; // not sure what error this should return 
+    // }
+
+    // copy architectural state
+    // spinlock_acquire(&newproc->p_lock);
+    struct addrspace *parent_addrspace = proc_getas();
+    // struct addrspace *new_addrspace = kmalloc(sizeof(struct addrspace));
+    if (parent_addrspace == NULL) {
+        pid_table_delete(newproc->p_pid);
+		kfree(newproc);
+        *retval = -1; 
+        return ENOMEM; 
+    } else {
+        err = as_copy(parent_addrspace, &newproc->p_addrspace);
+        if (err) {
+            pid_table_delete(newproc->p_pid);
+		    kfree(newproc);
+            *retval = -1;
+            return err;
+        }
+    }
+    
+    // newproc->p_addrspace = new_addrspace;
+    // spinlock_release(&newproc->p_lock);
+
+    // if (err) {
+    //     pid_table_delete(newproc->p_pid);
+    //     *retval = -1;
+    //     return err;
+    // }
+
+
 
     // Copy open file table so that each fd points to same open file
-    int i = 3;
+    int i = 0;
     while (i < OPEN_MAX) {
         if (curproc->p_open_filetable->open_files[i] != NULL) {
             newproc->p_open_filetable->open_files[i] = curproc->p_open_filetable->open_files[i];
-
-            lock_acquire(curproc->p_open_filetable->open_files[i]->offset_lock);
-            curproc->p_open_filetable->open_files[i]->of_refcount++;
-            lock_release(curproc->p_open_filetable->open_files[i]->offset_lock);
+            open_file_incref(curproc->p_open_filetable->open_files[i]); 
         }
         i++;
     }
 
-    // copy architectural state
-    spinlock_acquire(&newproc->p_lock);
-    struct addrspace *parent_addrspace = proc_getas();
-    struct addrspace *new_addrspace = kmalloc(sizeof(struct addrspace));
-    err = as_copy(parent_addrspace, &new_addrspace);
-    if (err) {
-        pid_table_delete(newproc->p_pid);
-        *retval = -1;
-        return err;
-    }
-    
-    newproc->p_addrspace = new_addrspace;
-    spinlock_release(&newproc->p_lock);
-
-    if (err) {
-        pid_table_delete(newproc->p_pid);
-        *retval = -1;
-        return err;
-    }
-
     // Copy kernel thread; return to user mode
-    err = thread_fork(newproc->p_name, newproc, child_fork, tf, 0);
+    struct trapframe *new_tf = kmalloc(sizeof(struct trapframe));
+    memcpy(new_tf, tf, (size_t) sizeof(struct trapframe));
+    // *new_tf = *tf;
+    err = thread_fork(newproc->p_name, newproc, child_fork, new_tf, 0);
 
     if (err) {
         pid_table_delete(newproc->p_pid);
+        kfree(newproc);
+        kfree(new_tf);
+        // if fails, delete all dec reference count of all open files - add function in filetable and decref in openfile 
+        // free all memory malloc'd
         *retval = -1;
         return err;
-    }
+    }    
 
+    *retval = newproc->p_pid; 
     return 0;
 }
 
 void child_fork(void *tf, unsigned long arg) {
     (void) arg;
 
-    struct trapframe new_tf = * ((struct trapframe *) tf);
+    // struct trapframe *new_tf_pointer = tf; 
+    // struct trapframe new_tf = *new_tf_pointer;
+    struct trapframe new_tf = *((struct trapframe*)tf);
     new_tf.tf_v0 = 0;
     new_tf.tf_a3 = 0;
     new_tf.tf_epc += 4;     // Setting program counter so that same instruction doesn't run again
-
 
     mips_usermode(&new_tf); 
 }

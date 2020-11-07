@@ -38,6 +38,10 @@ open_filetable_create() {       // Create new open_filetable struct pointer and 
 
     open_filetable->open_filetable_lock = lock_create("open filetable lock");
 
+    for (int i = 0; i < OPEN_MAX; i++) {
+        open_filetable->open_files[i] = NULL; 
+    }
+
     return open_filetable; 
 }
 

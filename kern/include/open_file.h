@@ -28,6 +28,7 @@ struct open_file {
  */
 struct open_file* open_file_create(int status,  struct vnode *vnode); 
 int open_file_destroy(struct open_file *open_file); 
+int open_file_incref(struct open_file *open_file); 
 
 
 

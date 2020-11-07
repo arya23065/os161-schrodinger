@@ -11,21 +11,21 @@ struct pid_table *kpid_table;
 void
 pid_table_init(void) {
 
-    struct pid_table *new_pid_table;
+    // struct pid_table *new_pid_table;
 
-    new_pid_table = kmalloc(sizeof(struct pid_table));
-    if (new_pid_table == NULL) {
+    kpid_table = kmalloc(sizeof(struct pid_table));
+    if (kpid_table == NULL) {
         panic("Failed to initialize PID table");
     }
 
-    new_pid_table->pid_table_lock = lock_create("PID Table lock");
-    if (new_pid_table->pid_table_lock == NULL) 
+    kpid_table->pid_table_lock = lock_create("PID Table lock");
+    if (kpid_table->pid_table_lock == NULL) 
         panic("Failed to initialize PID table");
 
-    new_pid_table->pid_array[1] = kproc;
+    kpid_table->pid_array[1] = kproc;
     kproc->p_pid = 1;
 
-    kpid_table = new_pid_table;
+    // kpid_table = new_pid_table;
 }
 
 void 
@@ -68,6 +68,7 @@ pid_table_add(struct proc *proc, int *err) {
     if (i == PID_MAX + 1) {
         *err = ENPROC; 
     }
+    
 
     return ret_pid; 
 }
