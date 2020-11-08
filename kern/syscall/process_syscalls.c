@@ -238,13 +238,16 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
 
             // int pad = 0; 
             size_t byte_allignment = 0; 
-            if (args_strings_lens[i] < 4) {
-                byte_allignment = 4 - args_strings_lens[i]; 
-            } else {
-                byte_allignment = args_strings_lens[i] % 4; 
+            // size_t k = 0; 
+
+            while ((byte_allignment + args_strings_lens[i]) % 4 != 0 ) {
+                byte_allignment++; 
             }
+            // for (size_t k = args_strings_lens[i]; k % 4 == 0; k++) {
+            //     byte_allignment = k - args_strings_lens[i]; 
+            // }
             for (size_t j = args_strings_lens[i] + 1; j <= args_strings_lens[i] + byte_allignment; j++) { // needs to be aligned to 4 bytes - not necesarily 8
-                args_strings[i + j] = 0; 
+                args_strings[string_position + args_strings_lens[i]] = 0; 
             }
 
             string_position += args_strings_lens[i] + byte_allignment;             
