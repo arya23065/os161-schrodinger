@@ -11,8 +11,6 @@ struct pid_table *kpid_table;
 void
 pid_table_init(void) {
 
-    // struct pid_table *new_pid_table;
-
     kpid_table = kmalloc(sizeof(struct pid_table));
     if (kpid_table == NULL) {
         panic("Failed to initialize PID table");
@@ -20,6 +18,7 @@ pid_table_init(void) {
 
     for (int i = 0; i <= PID_MAX; i++) {
         kpid_table->pid_array[i] = NULL;
+        kpid_table->exit_array[i] = NULL;
     }
 
     kpid_table->pid_table_lock = lock_create("PID Table lock");
@@ -30,8 +29,6 @@ pid_table_init(void) {
     kpid_table->pid_array[1] = kproc;
     kproc->p_pid = 1;
     lock_release(kpid_table->pid_table_lock);
-
-    // kpid_table = new_pid_table;
 }
 
 void 
@@ -39,13 +36,17 @@ pid_table_destroy(void) {
 
     KASSERT(kpid_table != NULL); 
 
+    lock_acquire(kpid_table->pid_table_lock);
     for (int i = 0; i < PID_MAX; i++) {
         if (kpid_table->pid_array[i] != NULL)
             kfree(kpid_table->pid_array[i]);
+
+        if (kpid_table->exit_array[i] != NULL)
+            kfree(kpid_table->exit_array[i]);
     }
+    lock_release(kpid_table->pid_table_lock);
 
     lock_destroy(kpid_table->pid_table_lock);
-
     kfree(kpid_table);
 }
 
@@ -61,8 +62,19 @@ pid_table_add(struct proc *proc, int *err) {
 
     /* The pid 0 is reserved, so we must start assigning PIDs from index 1 */
     while (i <= PID_MAX) {
-        if (kpid_table->pid_array[i] == NULL) {
-            kpid_table->pid_array[i] = proc; 
+        if (kpid_table->pid_array[i] == NULL && kpid_table->exit_array[i] == NULL) {
+            kpid_table->pid_array[i] = proc;
+
+            kpid_table->exit_array[i] = kmalloc(sizeof(struct p_exit_info));
+            kpid_table->exit_array[i]->parent_pid = curproc->p_pid;
+            kpid_table->exit_array[i]->exit = false;
+            kpid_table->exit_array[i]->exit_cv = cv_create("Exit CV");
+            
+            if (kpid_table->exit_array[i]->exit_cv == NULL) {
+                kfree(kpid_table->exit_array[i]);
+                *err = ENOMEM;
+                break;
+            }
             ret_pid = i; 
             break; 
         }
@@ -79,6 +91,7 @@ pid_table_add(struct proc *proc, int *err) {
     return ret_pid; 
 }
 
+// EDIT WHILE WRITING EXIT SYSCALL
 int
 pid_table_delete(pid_t pid) {
     KASSERT(kpid_table != NULL);

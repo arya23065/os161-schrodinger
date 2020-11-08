@@ -5,6 +5,7 @@
 #include <spinlock.h>
 #include <limits.h>
 #include <proc.h>
+#include <synch.h>
 
 /*
  * PID Table structure.
@@ -13,6 +14,17 @@ struct pid_table
 {
 	struct proc *pid_array[PID_MAX + 1];
 	struct lock *pid_table_lock;
+	struct p_exit_info *exit_array[PID_MAX + 1];
+};
+
+/*
+ * Struct for storing information for exit and waitpid
+ */
+struct p_exit_info
+{
+	pid_t parent_pid;
+	bool exit;			// true if process has exited, false if not
+	struct cv *exit_cv;
 };
 
 /* This is the pid table structure for the kernel and for kernel-only threads. */
