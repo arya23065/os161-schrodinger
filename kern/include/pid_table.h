@@ -23,8 +23,9 @@ struct pid_table
 struct p_exit_info
 {
 	pid_t parent_pid;
-	bool exit;			// true if process has exited, false if not
+	bool has_exited;			// true if process has exited, false if not
 	struct cv *exit_cv;
+	int exitcode;
 };
 
 /* This is the pid table structure for the kernel and for kernel-only threads. */

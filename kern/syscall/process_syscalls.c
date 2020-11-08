@@ -14,6 +14,7 @@
 #include <vnode.h>
 #include <kern/errno.h>
 #include <vfs.h>
+#include <limits.h>
 
 
 int 
@@ -363,12 +364,52 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
     return 0;
 }
 
-int sys_waitpid(pid_t pid, const_userptr_t status, int options, int *retval) {
-    (void) pid; 
-    (void) status; 
-    (void) options; 
-    (void) retval; 
+int sys_waitpid(pid_t pid, userptr_t status, int options, int *retval) {
+    int err = 0;
 
+    lock_acquire(kpid_table->pid_table_lock);
+
+    if (pid <= 1 || pid > PID_MAX || options != 0) {
+        *retval = -1;
+        lock_release(kpid_table->pid_table_lock);
+        return EINVAL;
+    }
+
+    struct p_exit_info *pei = kpid_table->exit_array[pid];
+    if (pei == NULL) {
+        *retval = -1;
+        lock_release(kpid_table->pid_table_lock);
+        return ESRCH;
+    }
+
+    if (pid == curproc->p_pid || pei->parent_pid != curproc->p_pid) {
+        *retval = -1;
+        lock_release(kpid_table->pid_table_lock);
+        return ECHILD;
+    }
+
+    if (!pei->has_exited) {
+        cv_wait(pei->exit_cv, kpid_table->pid_table_lock);
+    }
+
+
+    if (status != NULL) {
+        err = copyout(&pei->exitcode, status, sizeof(int));
+        if (err) {
+            *retval = -1;
+            lock_release(kpid_table->pid_table_lock);
+            return err;
+        }
+    }
+
+    KASSERT(pei->has_exited == true);
+    cv_destroy(pei->exit_cv);
+    kfree(pei);
+    KASSERT(kpid_table->exit_array[pid] == NULL);
+
+    lock_release(kpid_table->pid_table_lock);
+
+    *retval = pid;
     return 0; 
 }
 

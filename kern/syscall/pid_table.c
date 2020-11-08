@@ -5,6 +5,7 @@
 #include <proc.h>
 #include <synch.h>
 #include <kern/errno.h>
+#include <current.h>
 
 struct pid_table *kpid_table;
 
@@ -26,11 +27,22 @@ pid_table_init(void) {
         panic("Failed to initialize PID table");
 
     lock_acquire(kpid_table->pid_table_lock);
+
     kpid_table->pid_array[1] = kproc;
     kproc->p_pid = 1;
+
+    kpid_table->exit_array[1] = kmalloc(sizeof(struct p_exit_info));
+    KASSERT(kpid_table->exit_array[1] != NULL);
+    kpid_table->exit_array[1]->has_exited = false;
+    kpid_table->exit_array[1]->parent_pid = 0;
+    kpid_table->exit_array[1]->exit_cv = cv_create("KPROC CV");
+    kpid_table->exit_array[1]->has_exited = -1;
+    KASSERT(kpid_table->exit_array[1]->exit_cv != NULL);
+
     lock_release(kpid_table->pid_table_lock);
 }
 
+// EDIT WITH STUFF FROM EXIT_ARRAY
 void 
 pid_table_destroy(void) {
 
@@ -64,10 +76,11 @@ pid_table_add(struct proc *proc, int *err) {
     while (i <= PID_MAX) {
         if (kpid_table->pid_array[i] == NULL && kpid_table->exit_array[i] == NULL) {
             kpid_table->pid_array[i] = proc;
-
+            
             kpid_table->exit_array[i] = kmalloc(sizeof(struct p_exit_info));
             kpid_table->exit_array[i]->parent_pid = curproc->p_pid;
-            kpid_table->exit_array[i]->exit = false;
+            kpid_table->exit_array[i]->has_exited = false;
+            kpid_table->exit_array[i]->exitcode = -1;
             kpid_table->exit_array[i]->exit_cv = cv_create("Exit CV");
             
             if (kpid_table->exit_array[i]->exit_cv == NULL) {
