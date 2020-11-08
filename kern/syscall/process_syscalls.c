@@ -13,6 +13,7 @@
 #include <mips/trapframe.h>
 #include <vnode.h>
 #include <kern/errno.h>
+#include <vfs.h>
 
 
 int 
@@ -34,8 +35,9 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
 		return ENOMEM;
 	}
 
-    char* name = strcat(curproc->p_name, "_child"); 
-    newproc->p_name = kstrdup(name);
+    // char* name = strcat(curproc->p_name, "_child"); 
+    // newproc->p_name = kstrdup(name);
+    newproc->p_name = kstrdup(curproc->p_name);
 	if (newproc->p_name == NULL) {
 		kfree(newproc);
         *retval = -1; 
@@ -110,7 +112,7 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
 
     // Copy kernel thread; return to user mode
     struct trapframe *new_tf = kmalloc(sizeof(struct trapframe));
-    memcpy(new_tf, tf, (size_t) sizeof(struct trapframe));
+    memcpy(new_tf, tf, sizeof(struct trapframe));
     // *new_tf = *tf;
 
     newproc->p_pid = pid_table_add(newproc, &err); 
@@ -150,7 +152,7 @@ void child_fork(void *tf, unsigned long arg) {
     mips_usermode(&new_tf); 
 }
 
-int sys_execv(const_userptr_t program, const_userptr_t args, int *retval) {
+int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
 
     /*
     * 1. copy arguments from the old address space - use copyin/out, and 'write your own function' - 
@@ -183,117 +185,180 @@ int sys_execv(const_userptr_t program, const_userptr_t args, int *retval) {
     * 
     */
 
-    (void) program;
-    (void) args;
-    (void) retval;
-    // int result = 0;
+    // (void) program;
+    // (void) args;
+    // (void) retval;
+    int result = 0;
 
-    // char progname[PATH_MAX];
-    // int path_len;
+    char *progname = kmalloc(PATH_MAX);
+    if (progname == NULL) {
+        *retval = -1; 
+        return ENOMEM; 
+    }
+    size_t progname_len;
 
-    // result = copyinstr(program, progname, PATH_MAX, &path_len);
+    result = copyinstr(program, progname, PATH_MAX, &progname_len);
+    if (result) {
+        *retval = -1;
+        return ENOENT;
+    }
 
-    // if (result) {
-    //     *retval = -1;
-    //     return ENOENT;
-    // }
-
-    // const_userptr_t *args_pointers[ARG_MAX / 4]; 
-    // size_t *args_pointers_size[ARG_MAX]; 
-    // char *args_strings[ARG_MAX]; 
-    // size_t *args_strings_size[ARG_MAX]; 
+    char **args_input = (char**)args;
+    // char *args_copied = kmalloc(ARG_MAX);
+    // size_t args_len;
+    // char *args_pointers = kmalloc(ARG_MAX); 
+    // size_t args_pointers_size[ARG_MAX]; 
+    char *args_strings = kmalloc(ARG_MAX); 
+    size_t args_strings_lens[ARG_MAX]; 
     // int args_pointers_max_index = 0; 
 
-    // // int err = 0; 
 
-    // // /* Copy in the pointers to the arguments */
-    // // err = copyinstr(args, args_pointers, ARG_MAX, args_pointers_size[i]); 
-    // // if (err) {
-    // //     *retval = -1; 
-    // //     return err; 
-    // // }
-    // for (int i = 0; i < ARG_MAX; i++) {
-    //     if (args[i] == NULL) {
-    //         args_pointers_max_index = i - 1;    // if argspointer max index is null there arent any arguments  
-    //         break; 
-    //     } else {
-    //         err = copyinstr(args, args_pointers[i], ARG_MAX, args_pointers_size[i]); 
-    //         if (err) {
-    //             *retval = -1; 
-    //             return err; 
+    // /* Copy in the pointers to the arguments */
+    // result = copyinstr(args, args_copied, ARG_MAX, &args_len); 
+    // copyinstr_result = copyinstr(args, args_pointers, ARG_MAX, args_pointers_size[i]); 
+    // if (err) {
+    //     *retval = -1; 
+    //     return err; 
+    // }
+    // result = copyin(args, args_pointers, 4); 
+    // kprintf("argument")
+
+    int no_of_args = 0; 
+    int string_position = 0; 
+
+    for (int i = 0; i < ARG_MAX - 1; i++) {
+        if (args_input[i+1] == 0) {
+            // args_strings[i] = NULL;
+            break; 
+        } else {
+            /* The first argument is the program name */
+            // args_strings[i] = args_input[i + 1]; 
+            result = copyinstr((const_userptr_t)args_input[i+1], &args_strings[string_position], ARG_MAX, &args_strings_lens[i]);
+
+            // int pad = 0; 
+            size_t byte_allignment = 0; 
+            if (args_strings_lens[i] < 4) {
+                byte_allignment = 4 - args_strings_lens[i]; 
+            } else {
+                byte_allignment = args_strings_lens[i] % 4; 
+            }
+            for (size_t j = args_strings_lens[i] + 1; j <= args_strings_lens[i] + byte_allignment; j++) { // needs to be aligned to 4 bytes - not necesarily 8
+                args_strings[i + j] = 0; 
+            }
+
+            string_position += args_strings_lens[i] + byte_allignment;             
+            no_of_args++; 
+        }
+    }
+
+    (void) args_strings;
+
+    // char* null_char = 0; 
+
+    // /* Padding the string arguments */
+    // for (int i = 0; i < no_of_args; i++) {
+    //     int pad = 0; 
+
+    //     for (int j = 0; j <= 8; j++) {
+    //         if (pad == 0 && args_strings[i][j] == 0) {
+    //             pad = 1; 
+    //         } else if (pad == 1) {
     //         }
     //     }
     // }
 
-    // // for (int i = 0; i < args_pointers_max_index; i++) {
-    // //     err = copyinstr(args_pointers[i], args_strings[i], ARG_MAX, args_strings_size[i]); 
-    // //     if (err) {
-    // //         *retval = -1; 
-    // //         return err; 
-    // //     }
-    // // }
 
-    // // int i = 0;
-
-    // // while (1) {
-    // //     err = copyin(args + i * 4, args_pointers[i], 4);
-    // //     if (args_pointers[i] = 0)
-    // //         break;
-    // // }
-
-    // struct addrspace *as;
-	// struct vnode *v;
-	// vaddr_t entrypoint, stackptr;
-
-	// /* Open the file. */
-	// result = vfs_open(progname, O_RDONLY, 0, &v);
-	// if (result) {
-	// 	return result;
-	// }
-
-	// /* We should be a new process. */
-	// KASSERT(proc_getas() == NULL);
-
-	// /* Create a new address space. */
-	// as = as_create();
-	// if (as == NULL) {
-	// 	vfs_close(v);
-	// 	return ENOMEM;
-	// }
-
-	// /* Switch to it and activate it. */
-	// proc_setas(as);
-	// as_activate();
-
-	// /* Load the executable. */
-	// result = load_elf(v, &entrypoint);
-	// if (result) {
-	// 	/* p_addrspace will go away when curproc is destroyed */
-	// 	vfs_close(v);
-	// 	return result;
-	// }
-
-	// /* Done with the file now. */
-	// vfs_close(v);
-
-	// /* Define the user stack in the address space */
-	// result = as_define_stack(as, &stackptr);
-	// if (result) {
-	// 	/* p_addrspace will go away when curproc is destroyed */
-	// 	return result;
-	// }
-
-	// /* Warp to user mode. */
-	// enter_new_process(0 /*argc*/, NULL /*userspace addr of argv*/,
-	// 		  NULL /*userspace addr of environment*/,
-	// 		  stackptr, entrypoint);
-
-	// /* enter_new_process does not return. */
-	// panic("enter_new_process returned\n");
-	// return EINVAL;
+    // kprintf("the first argument is %s", args_strings[0]); 
 
 
+    // int args_iterator = 0; 
+    // for (int i = 0; i < ARG_MAX; i++) {
+    //     if (args_input[i] == NULL) {
+    //         // args_pointers_max_index = i - 1;    // if argspointer max index is null there arent any arguments  
+    //         break; 
+    //     } else {
+    //         result = copyinstr((const_userptr_t)args_input[i], &args_pointers[args_iterator], ARG_MAX, &args_pointers_size[i]); 
+    //         if (result) {
+    //             *retval = -1; 
+    //             return result; 
+    //         }
+    //         args_iterator += args_pointers_size[i]; 
+    //     }
+    // }
 
+    // kprintf("argument 0 is %s\n", args_input[0]); 
+    // kprintf("argument 1 is %s\n", args_input[1]); 
+    // kprintf("argument 2 is %s\n", args_input[2]); 
+    // kprintf("argument 3 is %s\n", args_input[3]); 
+    // kprintf("progname is is %s\n", progname); 
+
+
+    // for (int i = 0; i < args_pointers_max_index; i++) {
+    //     err = copyinstr(args_pointers[i], args_strings[i], ARG_MAX, args_strings_size[i]); 
+    //     if (err) {
+    //         *retval = -1; 
+    //         return err; 
+    //     }
+    // }
+
+    // int i = 0;
+
+    // while (1) {
+    //     err = copyin(args + i * 4, args_pointers[i], 4);
+    //     if (args_pointers[i] = 0)
+    //         break;
+    // }
+
+    struct addrspace *as;
+	struct vnode *v;
+	vaddr_t entrypoint, stackptr;
+
+	/* Open the file. */
+	result = vfs_open((char *)progname, O_RDONLY, 0, &v);
+	if (result) {
+		return result;
+	}
+
+	/* We should be a new process. */
+	KASSERT(proc_getas() == NULL);
+
+	/* Create a new address space. */
+	as = as_create();
+	if (as == NULL) {
+		vfs_close(v);
+		return ENOMEM;
+	}
+
+	/* Switch to it and activate it. */
+	proc_setas(as);
+	as_activate();
+
+	/* Load the executable. */
+	result = load_elf(v, &entrypoint);
+	if (result) {
+		/* p_addrspace will go away when curproc is destroyed */
+		vfs_close(v);
+		return result;
+	}
+
+	/* Done with the file now. */
+	vfs_close(v);
+
+	/* Define the user stack in the address space */
+	result = as_define_stack(as, &stackptr);
+	if (result) {
+		/* p_addrspace will go away when curproc is destroyed */
+		return result;
+	}
+
+	/* Warp to user mode. */
+	enter_new_process(0 /*argc*/, NULL /*userspace addr of argv*/,
+			  NULL /*userspace addr of environment*/,
+			  stackptr, entrypoint);
+
+	/* enter_new_process does not return. */
+	panic("enter_new_process returned\n");
+	return EINVAL;
 
     return 0;
 }
@@ -306,3 +371,11 @@ int sys_waitpid(pid_t pid, const_userptr_t status, int options, int *retval) {
 
     return 0; 
 }
+
+int sys__exit(int exitcode, int *retval) {
+    (void) retval; 
+    (void) exitcode; 
+
+    return 0; 
+}
+
