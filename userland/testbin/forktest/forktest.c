@@ -163,7 +163,7 @@ test(int nowait)
 	putchar('3');
 	check();
 
-	// printf("Finished check\n");
+	// printf("!!!\n");
 
 	/*
 	 * These must be called in reverse order to avoid waiting

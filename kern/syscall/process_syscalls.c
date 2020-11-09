@@ -235,22 +235,27 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
             /* The first argument is the program name */
             // args_strings[i] = args_input[i + 1]; 
             result = copyinstr((const_userptr_t)args_input[i+1], &args_strings[string_position], ARG_MAX, &args_strings_lens[i]);
+            if (result) {
+                *retval = -1;
+                return ENOENT;
+            }
 
             // int pad = 0; 
-            size_t byte_allignment = 0; 
+            size_t byte_padding = 0; 
             // size_t k = 0; 
 
-            while ((byte_allignment + args_strings_lens[i]) % 4 != 0 ) {
-                byte_allignment++; 
+            /* Determining how many bytes of padding need to be added - they must be 4 byte aligned */
+            while ((byte_padding + args_strings_lens[i]) % 4 != 0 ) {
+                byte_padding++; 
             }
             // for (size_t k = args_strings_lens[i]; k % 4 == 0; k++) {
             //     byte_allignment = k - args_strings_lens[i]; 
             // }
-            for (size_t j = args_strings_lens[i] + 1; j <= args_strings_lens[i] + byte_allignment; j++) { // needs to be aligned to 4 bytes - not necesarily 8
+            for (size_t j = args_strings_lens[i] + 1; j <= args_strings_lens[i] + byte_padding; j++) { 
                 args_strings[string_position + args_strings_lens[i]] = 0; 
             }
 
-            string_position += args_strings_lens[i] + byte_allignment;             
+            string_position += args_strings_lens[i] + byte_padding;             
             no_of_args++; 
         }
     }
@@ -313,35 +318,45 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
     //         break;
     // }
 
-    struct addrspace *as;
+    struct addrspace *as_new;
+    struct addrspace *as_old = curproc->p_addrspace; 
 	struct vnode *v;
 	vaddr_t entrypoint, stackptr;
 
+    char *buf; 
+    buf = kstrdup((char *)program);
+
 	/* Open the file. */
-	result = vfs_open((char *)progname, O_RDONLY, 0, &v);
+	result = vfs_open(buf, O_RDONLY, 0, &v);
 	if (result) {
+        *retval = -1; 
 		return result;
 	}
 
-	/* We should be a new process. */
-	KASSERT(proc_getas() == NULL);
+	/* We should be a new process.*/
+	KASSERT(proc_getas() != NULL);
 
 	/* Create a new address space. */
-	as = as_create();
-	if (as == NULL) {
+	as_new = as_create();
+	if (as_new == NULL) {
 		vfs_close(v);
+        *retval = -1; 
 		return ENOMEM;
 	}
 
 	/* Switch to it and activate it. */
-	proc_setas(as);
+	proc_setas(as_new);
 	as_activate();
 
-	/* Load the executable. */
+	/* Load the executable. If it fails, switch back to the old addrspace and activate it */
 	result = load_elf(v, &entrypoint);
 	if (result) {
 		/* p_addrspace will go away when curproc is destroyed */
 		vfs_close(v);
+        proc_setas(as_old);
+        as_activate();
+        as_destroy(as_new);
+        // kfree(newname);
 		return result;
 	}
 
@@ -349,7 +364,7 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
 	vfs_close(v);
 
 	/* Define the user stack in the address space */
-	result = as_define_stack(as, &stackptr);
+	result = as_define_stack(as_new, &stackptr);
 	if (result) {
 		/* p_addrspace will go away when curproc is destroyed */
 		return result;
@@ -375,7 +390,7 @@ int sys_waitpid(pid_t pid, userptr_t status, int options, int *retval) {
     if (pid <= 1 || pid > PID_MAX || options != 0) {
         *retval = -1;
         lock_release(kpid_table->pid_table_lock);
-        return EINVAL;
+        return ESRCH;
     }
 
     struct p_exit_info *pei = kpid_table->exit_array[pid];
@@ -408,7 +423,7 @@ int sys_waitpid(pid_t pid, userptr_t status, int options, int *retval) {
     KASSERT(pei->has_exited == true);
     cv_destroy(pei->exit_cv);
     kfree(pei);
-    KASSERT(kpid_table->exit_array[pid] == NULL);
+    // KASSERT(kpid_table->exit_array[pid] == NULL);
 
     lock_release(kpid_table->pid_table_lock);
 
@@ -419,6 +434,12 @@ int sys_waitpid(pid_t pid, userptr_t status, int options, int *retval) {
 int sys__exit(int exitcode, int *retval) {
     (void) retval; 
     (void) exitcode; 
+
+    struct p_exit_info *pei = kpid_table->exit_array[curproc->p_pid];
+    lock_acquire(kpid_table->pid_table_lock); 
+    pei->has_exited = true; 
+    cv_broadcast(pei->exit_cv, kpid_table->pid_table_lock);
+    lock_release(kpid_table->pid_table_lock); 
 
     return 0; 
 }
