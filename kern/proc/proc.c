@@ -245,7 +245,10 @@ proc_create_runprogram(const char *name)
 
 	/* Add the newproc to the pid table */
 	int err = 0; 
-	newproc->p_pid = pid_table_add(newproc, &err); 
+
+	lock_acquire(kpid_table->pid_table_lock);
+	newproc->p_pid = pid_table_add(newproc, &err);
+	lock_release(kpid_table->pid_table_lock);
 	
 	if (err) {
 		return NULL; 

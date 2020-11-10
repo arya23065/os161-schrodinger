@@ -15,6 +15,7 @@
 #include <kern/errno.h>
 #include <vfs.h>
 #include <limits.h>
+#include <kern/wait.h>
 
 
 int 
@@ -30,9 +31,12 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
     // copy addrs space - struct addrspace - as copy dumbvm.c 
     int err = 0;
 
+    lock_acquire(kpid_table->pid_table_lock);
+
     struct proc *newproc = kmalloc(sizeof(*newproc));
 	if (newproc == NULL) {
-        *retval = -1; 
+        *retval = -1;
+        lock_release(kpid_table->pid_table_lock);
 		return ENOMEM;
 	}
 
@@ -42,6 +46,7 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
 	if (newproc->p_name == NULL) {
 		kfree(newproc);
         *retval = -1; 
+        lock_release(kpid_table->pid_table_lock);
 		return ENOMEM;
 	}
 
@@ -85,6 +90,7 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
         // pid_table_delete(newproc->p_pid);
         kfree(newproc);
         *retval = -1;
+        lock_release(kpid_table->pid_table_lock);
         return err;
     }
     newproc->p_addrspace = new_addrspace;
@@ -121,6 +127,7 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
 	if (err) {
 		kfree(newproc);
         *retval = -1; 
+        lock_release(kpid_table->pid_table_lock);
 		return err; 
 	}
 
@@ -133,10 +140,13 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
         // if fails, delete all dec reference count of all open files - add function in filetable and decref in openfile 
         // free all memory malloc'd
         *retval = -1;
+        lock_release(kpid_table->pid_table_lock);
         return err;
-    }    
+    }
 
-    *retval = newproc->p_pid; 
+    *retval = newproc->p_pid;
+    lock_release(kpid_table->pid_table_lock);
+
     return 0;
 }
 
@@ -393,7 +403,9 @@ int sys_waitpid(pid_t pid, userptr_t status, int options, int *retval) {
         return ESRCH;
     }
 
-    struct p_exit_info *pei = kpid_table->exit_array[pid];
+    struct p_exit_info *pei;
+    pei = kpid_table->exit_array[pid];
+
     if (pei == NULL) {
         *retval = -1;
         lock_release(kpid_table->pid_table_lock);
@@ -433,14 +445,39 @@ int sys_waitpid(pid_t pid, userptr_t status, int options, int *retval) {
 
 int sys__exit(int exitcode, int *retval) {
     (void) retval; 
-    (void) exitcode; 
 
-    struct p_exit_info *pei = kpid_table->exit_array[curproc->p_pid];
-    lock_acquire(kpid_table->pid_table_lock); 
-    pei->has_exited = true; 
-    cv_broadcast(pei->exit_cv, kpid_table->pid_table_lock);
+    lock_acquire(kpid_table->pid_table_lock);
+
+    struct p_exit_info *pei;
+    pei = kpid_table->exit_array[curproc->p_pid];
+
+    KASSERT(pei != NULL);
+    KASSERT(curproc != kproc);
+
+    int num = threadarray_num(&curproc->p_threads);
+
+    for (int i = 0; i < num; i++) {
+        proc_remthread(threadarray_get(&curproc->p_threads, i));
+    }
+
+    pid_t pid = curproc->p_pid;
+    pid_table_delete(pid);
+    KASSERT(kpid_table->pid_array[pid] == NULL);
+
+    proc_addthread(kproc, curthread);
+
+    if (kpid_table->exit_array[pei->parent_pid] != NULL && kpid_table->exit_array[pei->parent_pid]->has_exited == false) {
+        pei->has_exited = true;
+        pei->exitcode = _MKWAIT_EXIT(exitcode);
+        cv_broadcast(pei->exit_cv, kpid_table->pid_table_lock);
+    }
+    else {
+        cv_destroy(pei->exit_cv);
+        kfree(pei);
+    }
+
     lock_release(kpid_table->pid_table_lock); 
 
-    return 0; 
+    thread_exit();
 }
 

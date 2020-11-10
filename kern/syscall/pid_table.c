@@ -68,7 +68,7 @@ pid_table_add(struct proc *proc, int *err) {
     pid_t ret_pid = -1;
     *err = 0;
 
-    lock_acquire(kpid_table->pid_table_lock); 
+    KASSERT(lock_do_i_hold(kpid_table->pid_table_lock));
 
     int i = PID_MIN; 
 
@@ -94,8 +94,6 @@ pid_table_add(struct proc *proc, int *err) {
         i++; 
     }
 
-    lock_release(kpid_table->pid_table_lock); 
-
     if (i == PID_MAX + 1) {
         *err = ENPROC; 
     }
@@ -108,14 +106,12 @@ pid_table_add(struct proc *proc, int *err) {
 int
 pid_table_delete(pid_t pid) {
     KASSERT(kpid_table != NULL);
-
-    lock_acquire(kpid_table->pid_table_lock);
+    KASSERT(lock_do_i_hold(kpid_table->pid_table_lock));
 
     if (kpid_table->pid_array[pid] != NULL) {
         proc_destroy(kpid_table->pid_array[pid]);
     }
 
-    lock_release(kpid_table->pid_table_lock);
     return 0;
 }
 
