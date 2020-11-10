@@ -451,7 +451,7 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
     }
 
     argv_kernel[no_of_args] = NULL; 
-    result = copyout(argv_kernel, argv, no_of_args + 1); 
+    result = copyout(argv_kernel, argv, (no_of_args + 1)*4); 
     char** testing = (char**) argv; 
     (void) testing; 
     if (result) {
@@ -527,9 +527,9 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
 	/* Warp to user mode. */
 	enter_new_process(no_of_args, argv, NULL, stackptr, entrypoint);
 
-	/* enter_new_process does not return. */
-	panic("enter_new_process returned\n");
-	return EINVAL;
+	/* enter_new_process should not return. */
+	panic("enter_new_process has returned\n");
+	// return EINVAL;
 
     return 0;
 }
