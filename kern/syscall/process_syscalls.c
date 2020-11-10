@@ -218,6 +218,11 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
     * 
     */
 
+   if (program == NULL || args == NULL) {
+       *retval  = -1; 
+       return EFAULT;
+   }
+
     // (void) program;
     // (void) args;
     // (void) retval;
@@ -233,16 +238,17 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
     result = copyinstr(program, progname, PATH_MAX, &progname_len);
     if (result) {
         *retval = -1;
-        return ENOENT;
+        return result;
     }
 
     if (progname_len == 1){
         *retval = -1; 
-        return ENOENT;
+        return EINVAL;
     }
 
 
     char **args_input = (char**)args;
+
     // char *args_copied = kmalloc(ARG_MAX);
     // size_t args_len;
     // char *args_pointers = kmalloc(ARG_MAX); 
@@ -277,7 +283,7 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
             result = copyinstr((const_userptr_t)args_input[i], &args_strings[string_position], ARG_MAX, &args_strings_lens[i]);
             if (result) {
                 *retval = -1;
-                return ENOENT;
+                return result;
             }
 
             // int pad = 0; 
@@ -480,8 +486,8 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
 
     argv_kernel[no_of_args] = NULL; 
     result = copyout(argv_kernel, argv, (no_of_args + 1)*4); 
-    char** testing = (char**) argv; 
-    (void) testing; 
+    // char** testing = (char**) argv; 
+    // (void) testing; 
     if (result) {
         /* p_addrspace will go away when curproc is destroyed */
         proc_setas(as_old);
@@ -567,10 +573,16 @@ int sys_waitpid(pid_t pid, userptr_t status, int options, int *retval) {
 
     lock_acquire(kpid_table->pid_table_lock);
 
-    if (pid <= 1 || pid > PID_MAX || options != 0) {
+    if (pid <= 1 || pid > PID_MAX) {
         *retval = -1;
         lock_release(kpid_table->pid_table_lock);
         return ESRCH;
+    }
+
+    if (options != 0) {
+        *retval = -1;
+        lock_release(kpid_table->pid_table_lock);
+        return EINVAL;
     }
 
     struct p_exit_info *pei;
