@@ -80,9 +80,13 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
     //     *retval = -1; 
     //     return ENOMEM; 
     // } else {
+    spinlock_acquire(&newproc->p_lock);
     err = as_copy(proc_getas(), &new_addrspace);
+    spinlock_release(&newproc->p_lock);
+
     if (err) {
         // pid_table_delete(newproc->p_pid);
+        proc_destroy(newproc);
         kfree(newproc);
         *retval = -1;
         return err;
@@ -204,13 +208,19 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
         return ENOENT;
     }
 
+    if (progname_len == 1){
+        *retval = -1; 
+        return ENOENT;
+    }
+
+
     char **args_input = (char**)args;
     // char *args_copied = kmalloc(ARG_MAX);
     // size_t args_len;
     // char *args_pointers = kmalloc(ARG_MAX); 
     // size_t args_pointers_size[ARG_MAX]; 
     char *args_strings = kmalloc(ARG_MAX); 
-    size_t args_strings_lens[ARG_MAX]; 
+    size_t *args_strings_lens = kmalloc(ARG_MAX); 
     // int args_pointers_max_index = 0; 
 
 
@@ -225,16 +235,18 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
     // kprintf("argument")
 
     int no_of_args = 0; 
-    int string_position = 0; 
+    int string_position = 0;
+    int total_args_len = 0; 
 
-    for (int i = 0; i < ARG_MAX - 1; i++) {
-        if (args_input[i+1] == 0) {
+    for (int i = 0; i < ARG_MAX; i++) {
+        if (args_input[i] == 0) {
             // args_strings[i] = NULL;
             break; 
         } else {
             /* The first argument is the program name */
             // args_strings[i] = args_input[i + 1]; 
-            result = copyinstr((const_userptr_t)args_input[i+1], &args_strings[string_position], ARG_MAX, &args_strings_lens[i]);
+            // result = copyinstr((const_userptr_t)args_input[i+1], &args_strings[string_position], ARG_MAX, &args_strings_lens[i]);
+            result = copyinstr((const_userptr_t)args_input[i], &args_strings[string_position], ARG_MAX, &args_strings_lens[i]);
             if (result) {
                 *retval = -1;
                 return ENOENT;
@@ -255,12 +267,18 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
                 args_strings[string_position + args_strings_lens[i]] = 0; 
             }
 
-            string_position += args_strings_lens[i] + byte_padding;             
+            string_position += args_strings_lens[i] + byte_padding;  
+            args_strings_lens[i] += byte_padding;   
+            total_args_len += args_strings_lens[i];          
             no_of_args++; 
         }
     }
 
-    (void) args_strings;
+    if (total_args_len >  ARG_MAX) {
+        //kfree everything needed 
+        *retval = -1; 
+        return E2BIG; 
+    }
 
     // char* null_char = 0; 
 
@@ -344,8 +362,17 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
 		return ENOMEM;
 	}
 
+    // /* If there is a current address space, deactivate it */
+	// if (curproc_getas() != NULL) {
+	// 	as_deactivate();
+	// }
+
 	/* Switch to it and activate it. */
-	proc_setas(as_new);
+	as_old = proc_setas(as_new);
+    // if (as_old != NULL) {
+	// 	as_destroy(as_old);
+	// }
+
 	as_activate();
 
 	/* Load the executable. If it fails, switch back to the old addrspace and activate it */
@@ -370,10 +397,135 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
 		return result;
 	}
 
+    // stackptr -= total_args_len;
+
+
+    // stackptr -= (no_of_args * 8 + 1);
+    // stackptr -= (total_args_len);
+
+    stackptr -= (no_of_args * 8 + total_args_len + 1);
+    // stackptr -= (total_args_len);
+	userptr_t user_args_strings = (userptr_t)stackptr;
+    char *argv_kernel[no_of_args + 1]; // + 1 for NULL at the end
+    userptr_t argv = (userptr_t)stackptr;
+
+
+
+    // userptr_t *user_args_strings = kmalloc(no_of_args);
+    // userptr_t user_args_strings[no_of_args];
+
+
+    /* Coying out pointers */
+    // args_position += args_strings_lens[no_of_args]; 
+    // size_t user_args_position = 0; 
+    size_t size = 0; 
+    size_t strings_pos = no_of_args * 8 + 1; 
+
+    // size_t strings_pos = 0; 
+    userptr_t dest; 
+
+    for (int i = 0; i < no_of_args; i++) {
+        if (i == 0) {
+            dest = (userptr_t)((char *)user_args_strings + strings_pos);
+            result = copyoutstr(&args_strings[0], dest, (size_t) args_strings_lens[i], &size); 
+        } else if (i < no_of_args) {
+            strings_pos += args_strings_lens[i - 1]; 
+            dest = (userptr_t)((char *)user_args_strings + strings_pos);
+            result = copyoutstr(&args_strings[strings_pos - no_of_args * 8 - 1], dest, (size_t) args_strings_lens[i], &size); 
+        } 
+        // else {
+        //     char null_char = 0; 
+        //     result = copyoutstr(&null_char, &user_args_strings[strings_pos], 8, &size); 
+        //     strings_pos += 8; 
+        // }
+        if (result) {
+            /* p_addrspace will go away when curproc is destroyed */
+            proc_setas(as_old);
+            as_activate();
+            as_destroy(as_new);
+            // kfree(newname);
+            *retval = -1; 
+            return result;
+        }
+        argv_kernel[i] = (char *)dest;
+    }
+
+    argv_kernel[no_of_args] = NULL; 
+    result = copyout(argv_kernel, argv, no_of_args + 1); 
+    char** testing = (char**) argv; 
+    (void) testing; 
+    if (result) {
+        /* p_addrspace will go away when curproc is destroyed */
+        proc_setas(as_old);
+        as_activate();
+        as_destroy(as_new);
+        // kfree(newname);
+        *retval = -1; 
+        return result;
+    }
+
+
+    // for (int i = 0; i <= no_of_args; i++) {
+    //     if (i == 0) {
+    //         result = copyoutstr(&args_strings[0], &user_args_strings[strings_pos], (size_t) args_strings_lens[i], &size); 
+    //     } else if (i < no_of_args) {
+    //         strings_pos += args_strings_lens[i - 1]; 
+    //         result = copyoutstr(&args_strings[strings_pos - no_of_args * 8], &user_args_strings[strings_pos], (size_t) args_strings_lens[i], &size); 
+    //     } 
+    //     // else {
+    //     //     char null_char = 0; 
+    //     //     result = copyoutstr(&null_char, &user_args_strings[strings_pos], 8, &size); 
+    //     //     strings_pos += 8; 
+    //     // }
+    //     if (result) {
+    //         /* p_addrspace will go away when curproc is destroyed */
+    //         proc_setas(as_old);
+    //         as_activate();
+    //         as_destroy(as_new);
+    //         // kfree(newname);
+    //         *retval = -1; 
+    //         return result;
+    //     }
+    // }
+
+    // size_t pointers_pos = 0; 
+    // strings_pos = no_of_args * 8; 
+    // char **user_args = (char**)user_args_strings;
+    // char *pointer_addr; 
+    // userptr_t argv = (userptr_t)stackptr;
+    
+    // for (int i = 0; i <= no_of_args; i++) {
+
+    //     if (i == 0) {
+    //         pointer_addr = user_args[strings_pos]; 
+    //     } else if (i < no_of_args) {
+    //         strings_pos += args_strings_lens[i - 1];
+    //         pointer_addr = user_args[strings_pos]; 
+    //     } 
+    //     else {
+    //         char null_char = 0; 
+    //         result = copyout(&null_char, &argv[pointers_pos], 8); 
+    //     }
+
+    //     result = copyout(&pointer_addr, &argv[pointers_pos], 8); 
+    //     pointers_pos += 8; 
+    //     // args_position += size; 
+
+    //     if (result) {
+    //         /* p_addrspace will go away when curproc is destroyed */
+    //         proc_setas(as_old);
+    //         as_activate();
+    //         as_destroy(as_new);
+    //         // kfree(newname);
+    //         *retval = -1; 
+    //         return result;
+    //     }
+    // }
+
+
+
 	/* Warp to user mode. */
-	enter_new_process(0 /*argc*/, NULL /*userspace addr of argv*/,
-			  NULL /*userspace addr of environment*/,
-			  stackptr, entrypoint);
+	enter_new_process(no_of_args, argv, NULL, stackptr, entrypoint);
 
 	/* enter_new_process does not return. */
 	panic("enter_new_process returned\n");
