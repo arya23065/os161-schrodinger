@@ -30,13 +30,15 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
     // create new proc 
     // copy addrs space - struct addrspace - as copy dumbvm.c 
     int err = 0;
+    KASSERT(curproc != NULL);
 
-    lock_acquire(kpid_table->pid_table_lock);
+
+    // lock_acquire(kpid_table->pid_table_lock);
 
     struct proc *newproc = kmalloc(sizeof(*newproc));
 	if (newproc == NULL) {
         *retval = -1;
-        lock_release(kpid_table->pid_table_lock);
+        // lock_release(kpid_table->pid_table_lock);
 		return ENOMEM;
 	}
 
@@ -46,30 +48,30 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
 	if (newproc->p_name == NULL) {
 		kfree(newproc);
         *retval = -1; 
-        lock_release(kpid_table->pid_table_lock);
+        // lock_release(kpid_table->pid_table_lock);
 		return ENOMEM;
 	}
 
-	threadarray_init(&newproc->p_threads);
-	spinlock_init(&newproc->p_lock);
+	// threadarray_init(&newproc->p_threads);
+	// spinlock_init(&newproc->p_lock);
 
-	/* VM fields */
-	// newproc->p_addrspace = NULL;
+	// /* VM fields */
+	// // newproc->p_addrspace = NULL;
 
-	/* VFS fields */
-	newproc->p_cwd = NULL;
+	// /* VFS fields */
+	// newproc->p_cwd = NULL;
 
-	/* Open filetable */
-	newproc->p_open_filetable = open_filetable_create(); 
+	// /* Open filetable */
+	// newproc->p_open_filetable = open_filetable_create(); 
 
-    spinlock_acquire(&newproc->p_lock);
-	if (newproc->p_cwd != NULL) {
-		VOP_INCREF(newproc->p_cwd);
-		newproc->p_cwd = newproc->p_cwd;
-	}
-	spinlock_release(&newproc->p_lock);
+    // spinlock_acquire(&newproc->p_lock);
+	// if (newproc->p_cwd != NULL) {
+	// 	VOP_INCREF(newproc->p_cwd);
+	// 	newproc->p_cwd = newproc->p_cwd;
+	// }
+	// spinlock_release(&newproc->p_lock);
 
-    // newproc = proc_create_runprogram(name);
+    newproc = proc_create_runprogram(newproc->p_name);
 
     // if (newproc == NULL) {
     //     *retval = -1; 
@@ -85,19 +87,22 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
     //     *retval = -1; 
     //     return ENOMEM; 
     // } else {
-    spinlock_acquire(&newproc->p_lock);
+    // spinlock_acquire(&newproc->p_lock);
     err = as_copy(proc_getas(), &new_addrspace);
-    spinlock_release(&newproc->p_lock);
+    // spinlock_release(&newproc->p_lock);
 
     if (err) {
         // pid_table_delete(newproc->p_pid);
         proc_destroy(newproc);
         kfree(newproc);
         *retval = -1;
-        lock_release(kpid_table->pid_table_lock);
+        // lock_release(kpid_table->pid_table_lock);
         return err;
     }
+
+    // spinlock_acquire(&newproc->p_lock);
     newproc->p_addrspace = new_addrspace;
+    // spinlock_release(&newproc->p_lock);
 
     
     // newproc->p_addrspace = new_addrspace;
@@ -112,7 +117,9 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
 
 
     // Copy open file table so that each fd points to same open file
-    int i = 0;
+    // spinlock_acquire(&newproc->p_lock);
+    // lock_acquire(curproc->p_open_filetable->open_filetable_lock);
+    int i = 3;
     while (i < OPEN_MAX) {
         if (curproc->p_open_filetable->open_files[i] != NULL) {
             newproc->p_open_filetable->open_files[i] = curproc->p_open_filetable->open_files[i];
@@ -120,36 +127,44 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
         }
         i++;
     }
+    // lock_release(curproc->p_open_filetable->open_filetable_lock);
+    // spinlock_release(&newproc->p_lock);
 
     // Copy kernel thread; return to user mode
     struct trapframe *new_tf = kmalloc(sizeof(struct trapframe));
     memcpy(new_tf, tf, sizeof(struct trapframe));
     // *new_tf = *tf;
 
-    newproc->p_pid = pid_table_add(newproc, &err); 
+    // lock_acquire(kpid_table->pid_table_lock);
+    // newproc->p_pid = pid_table_add(newproc, &err); 
+    // lock_release(kpid_table->pid_table_lock);
 	
 	if (err) {
 		kfree(newproc);
         *retval = -1; 
-        lock_release(kpid_table->pid_table_lock);
+        // lock_release(kpid_table->pid_table_lock);
 		return err; 
 	}
+
+    // lock_release(kpid_table->pid_table_lock);
 
     err = thread_fork(newproc->p_name, newproc, child_fork, new_tf, 0);
 
     if (err) {
+        lock_acquire(kpid_table->pid_table_lock);
         pid_table_delete(newproc->p_pid);
+        lock_release(kpid_table->pid_table_lock);
+
         kfree(newproc);
         kfree(new_tf);
         // if fails, delete all dec reference count of all open files - add function in filetable and decref in openfile 
         // free all memory malloc'd
         *retval = -1;
-        lock_release(kpid_table->pid_table_lock);
+        // lock_release(kpid_table->pid_table_lock);
         return err;
     }
 
     *retval = newproc->p_pid;
-    lock_release(kpid_table->pid_table_lock);
 
     return 0;
 }
@@ -163,6 +178,9 @@ void child_fork(void *tf, unsigned long arg) {
     new_tf.tf_v0 = 0;
     new_tf.tf_a3 = 0;
     new_tf.tf_epc += 4;     // Setting program counter so that same instruction doesn't run again
+
+    // proc_setas(curproc->p_addrspace); 
+    as_activate();
 
     mips_usermode(&new_tf); 
 }
@@ -588,20 +606,19 @@ int sys_waitpid(pid_t pid, userptr_t status, int options, int *retval) {
     cv_destroy(pei->exit_cv);
     kfree(pei);
     // KASSERT(kpid_table->exit_array[pid] == NULL);
-
     lock_release(kpid_table->pid_table_lock);
 
     *retval = pid;
     return 0; 
 }
 
-int sys__exit(int exitcode, int *retval) {
-    (void) retval; 
+int sys__exit(int exitcode) {
 
     lock_acquire(kpid_table->pid_table_lock);
 
+    pid_t pid = curproc->p_pid;
     struct p_exit_info *pei;
-    pei = kpid_table->exit_array[curproc->p_pid];
+    pei = kpid_table->exit_array[pid];
 
     KASSERT(pei != NULL);
     KASSERT(curproc != kproc);
@@ -609,14 +626,8 @@ int sys__exit(int exitcode, int *retval) {
     int num = threadarray_num(&curproc->p_threads);
 
     for (int i = 0; i < num; i++) {
-        proc_remthread(threadarray_get(&curproc->p_threads, i));
+        proc_remthread(threadarray_get(&curproc->p_threads, i));    // check if the indices of the thread change when you detach it 
     }
-
-    pid_t pid = curproc->p_pid;
-    pid_table_delete(pid);
-    KASSERT(kpid_table->pid_array[pid] == NULL);
-
-    proc_addthread(kproc, curthread);
 
     if (kpid_table->exit_array[pei->parent_pid] != NULL && kpid_table->exit_array[pei->parent_pid]->has_exited == false) {
         pei->has_exited = true;
@@ -624,11 +635,23 @@ int sys__exit(int exitcode, int *retval) {
         cv_broadcast(pei->exit_cv, kpid_table->pid_table_lock);
     }
     else {
+        // lock_release(kpid_table->pid_table_lock); 
         cv_destroy(pei->exit_cv);
         kfree(pei);
     }
 
+    // lock_acquire(kpid_table->pid_table_lock);
+    // pid_t pid = curproc->p_pid;
+    int err = pid_table_delete(pid);
+    if (err) {
+        panic("You are trying to delete a process which is not in the pid table"); 
+    }
+
+    KASSERT(kpid_table->pid_array[pid] == NULL);
     lock_release(kpid_table->pid_table_lock); 
+
+    proc_addthread(kproc, curthread);
+    // lock_release(kpid_table->pid_table_lock); 
 
     thread_exit();
 }

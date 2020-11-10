@@ -110,6 +110,9 @@ pid_table_delete(pid_t pid) {
 
     if (kpid_table->pid_array[pid] != NULL) {
         proc_destroy(kpid_table->pid_array[pid]);
+        kpid_table->pid_array[pid] = NULL; 
+    } else {
+        return -1; 
     }
 
     return 0;
