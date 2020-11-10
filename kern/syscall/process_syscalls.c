@@ -403,7 +403,7 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
     // stackptr -= (no_of_args * 8 + 1);
     // stackptr -= (total_args_len);
 
-    stackptr -= (no_of_args * 8 + total_args_len + 1);
+    stackptr -= ((no_of_args + 1) * 4 + total_args_len);
     // stackptr -= (total_args_len);
 	userptr_t user_args_strings = (userptr_t)stackptr;
     char *argv_kernel[no_of_args + 1]; // + 1 for NULL at the end
@@ -419,7 +419,7 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
     // args_position += args_strings_lens[no_of_args]; 
     // size_t user_args_position = 0; 
     size_t size = 0; 
-    size_t strings_pos = no_of_args * 8 + 1; 
+    size_t strings_pos = (no_of_args + 1) * 4; 
 
     // size_t strings_pos = 0; 
     userptr_t dest; 
@@ -431,7 +431,7 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
         } else if (i < no_of_args) {
             strings_pos += args_strings_lens[i - 1]; 
             dest = (userptr_t)((char *)user_args_strings + strings_pos);
-            result = copyoutstr(&args_strings[strings_pos - no_of_args * 8 - 1], dest, (size_t) args_strings_lens[i], &size); 
+            result = copyoutstr(&args_strings[strings_pos - (no_of_args + 1) * 4], dest, (size_t) args_strings_lens[i], &size); 
         } 
         // else {
         //     char null_char = 0; 
