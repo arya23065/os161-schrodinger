@@ -55,7 +55,7 @@ open_filetable_destroy(struct open_filetable *open_filetable) {     // Destroy o
     lock_acquire(open_filetable->open_filetable_lock);
     for (int i = 0; i < OPEN_MAX; i++) {
         int err = 0; 
-        if (open_filetable->open_files[i] == NULL) {
+        if (open_filetable->open_files[i] != NULL) {
             open_filetable_remove(open_filetable, i, &err);
             if (err) {
                 lock_release(open_filetable->open_filetable_lock);

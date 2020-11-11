@@ -124,7 +124,7 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
         if (curproc->p_open_filetable->open_files[i] != NULL) {
             newproc->p_open_filetable->open_files[i] = curproc->p_open_filetable->open_files[i];
             open_file_incref(curproc->p_open_filetable->open_files[i]); 
-        }
+        } 
         i++;
     }
     // lock_release(curproc->p_open_filetable->open_filetable_lock);
