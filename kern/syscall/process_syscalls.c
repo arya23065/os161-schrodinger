@@ -626,15 +626,17 @@ int sys__exit(int exitcode) {
     pid_t pid = curproc->p_pid;
     struct proc* proc = curproc; 
     struct p_exit_info *pei;
+    struct proc *proc = curproc;
     pei = kpid_table->exit_array[pid];
 
     KASSERT(pei != NULL);
-    KASSERT(curproc != kproc);
+    KASSERT(proc != kproc);
 
 
 
     int num = threadarray_num(&proc->p_threads);
 
+    // proc_remthread(curthread);
     for (int i = 0; i < num; i++) {
         proc_remthread(threadarray_get(&proc->p_threads, i));    // check if the indices of the thread change when you detach it 
     }
