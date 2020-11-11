@@ -289,6 +289,7 @@ wait_siblings(void)
 		remove(semname);
 		return;
 	}
+
 	if (pids[0]==0) {
 		close(fd);
 		close(semfd);
@@ -305,12 +306,17 @@ wait_siblings(void)
 		remove(semname);
 		return;
 	}
+		// printf("!!!hiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii\n"); 
+
 	if (pids[1]==0) {
 		close(fd);
 		close(semfd);
 		wait_siblings_child(semname);
 		_exit(0);
 	}
+
+			// printf("!!!finfnfinifnieneeeeeeeeeeee\n"); 
+
 
 	rv = write(fd, pids, sizeof(pids));
 	if (rv < 0) {
@@ -321,6 +327,8 @@ wait_siblings(void)
 		remove(semname);
 		return;
 	}
+				// printf("!!!f0000000000111111111111111eneeeeeeeeeeee\n"); 
+
 	if (rv != (int)sizeof(pids)) {
 		warnx("UH-OH: write error on %s: short count", TESTFILE);
 		/* abandon child procs :( */
@@ -329,6 +337,8 @@ wait_siblings(void)
 		remove(semname);
 		return;
 	}
+
+					// printf("!!!lkkkkkkkkkkkkkkkkkkkkkk\n"); 
 
 	/* gate the child procs */
 	rv = write(semfd, NULL, 2);

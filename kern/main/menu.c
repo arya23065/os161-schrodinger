@@ -142,8 +142,9 @@ common_prog(int nargs, char **args)
 	 * once you write the code for handling that.
 	 */
 	userptr_t status = 0; 
+	int retval; 
 	pid_t pid = proc->p_pid;
-	sys_waitpid(pid, status, 0, NULL);
+	sys_waitpid(pid, status, 0, &retval);
 
 	return 0;
 }

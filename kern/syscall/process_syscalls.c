@@ -124,7 +124,7 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
         if (curproc->p_open_filetable->open_files[i] != NULL) {
             newproc->p_open_filetable->open_files[i] = curproc->p_open_filetable->open_files[i];
             open_file_incref(curproc->p_open_filetable->open_files[i]); 
-        }
+        } 
         i++;
     }
     // lock_release(curproc->p_open_filetable->open_filetable_lock);
@@ -438,22 +438,23 @@ int sys_waitpid(pid_t pid, userptr_t status, int options, int *retval) {
         KASSERT(pei->has_exited);
     }
 
-    lock_release(kpid_table->pid_table_lock);
+    // lock_release(kpid_table->pid_table_lock);
 
     if (status != NULL) {
         int exitcode = pei->exitcode; 
         err = copyout(&exitcode, status, sizeof(int));
         if (err) {
+            lock_release(kpid_table->pid_table_lock);
             *retval = -1;
             return err;
         }
     }
 
     KASSERT(pei->has_exited == true);
-    // cv_destroy(pei->exit_cv);
-    // kfree(pei);
+    kfree(kpid_table->exit_array[pid]);
     // KASSERT(kpid_table->exit_array[pid] == NULL);
-    // lock_release(kpid_table->pid_table_lock);
+    lock_release(kpid_table->pid_table_lock);
+    // cv_destroy(pei->exit_cv);
 
     *retval = pid;
     return 0; 
