@@ -35,7 +35,7 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
 
     // lock_acquire(kpid_table->pid_table_lock);
 
-    struct proc *newproc = kmalloc(sizeof(*newproc));
+    struct proc *newproc = proc_create_runprogram(curproc->p_name);
 	if (newproc == NULL) {
         *retval = -1;
         // lock_release(kpid_table->pid_table_lock);
@@ -44,13 +44,13 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
 
     // char* name = strcat(curproc->p_name, "_child"); 
     // newproc->p_name = kstrdup(name);
-    newproc->p_name = kstrdup(curproc->p_name);
-	if (newproc->p_name == NULL) {
-		kfree(newproc);
-        *retval = -1; 
-        // lock_release(kpid_table->pid_table_lock);
-		return ENOMEM;
-	}
+    // newproc->p_name = kstrdup(curproc->p_name);
+	// if (newproc->p_name == NULL) {
+	// 	kfree(newproc);
+    //     *retval = -1; 
+    //     // lock_release(kpid_table->pid_table_lock);
+	// 	return ENOMEM;
+	// }
 
 	// threadarray_init(&newproc->p_threads);
 	// spinlock_init(&newproc->p_lock);
@@ -71,7 +71,7 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
 	// }
 	// spinlock_release(&newproc->p_lock);
 
-    newproc = proc_create_runprogram(newproc->p_name);
+    // newproc = proc_create_runprogram(newproc->p_name);
 
     // if (newproc == NULL) {
     //     *retval = -1; 
@@ -80,7 +80,7 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
 
     // copy architectural state
     // spinlock_acquire(&newproc->p_lock);
-    struct addrspace *new_addrspace;
+    // struct addrspace *new_addrspace;
     // if (parent_addrspace == NULL) {
     //     pid_table_delete(newproc->p_pid);
 	// 	kfree(newproc);
@@ -88,7 +88,7 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
     //     return ENOMEM; 
     // } else {
     spinlock_acquire(&newproc->p_lock);
-    err = as_copy(proc_getas(), &new_addrspace);
+    err = as_copy(proc_getas(), &newproc->p_addrspace);
     spinlock_release(&newproc->p_lock);
 
     if (err) {
@@ -101,7 +101,7 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
     }
 
     // spinlock_acquire(&newproc->p_lock);
-    newproc->p_addrspace = new_addrspace;
+    // newproc->p_addrspace = new_addrspace;
     // spinlock_release(&newproc->p_lock);
 
     
@@ -179,8 +179,8 @@ void child_fork(void *tf, unsigned long arg) {
     new_tf.tf_a3 = 0;
     new_tf.tf_epc += 4;     // Setting program counter so that same instruction doesn't run again
 
-    proc_setas(curproc->p_addrspace); 
-    as_activate();  //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // proc_setas(curproc->p_addrspace); 
+    // as_activate();  //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     mips_usermode(&new_tf); 
 }
@@ -246,28 +246,22 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
         return EINVAL;
     }
 
-
     char **args_input = (char**)args;
 
-    // char *args_copied = kmalloc(ARG_MAX);
-    // size_t args_len;
-    // char *args_pointers = kmalloc(ARG_MAX); 
-    // size_t args_pointers_size[ARG_MAX]; 
+    /* To check if the arg is an invalid user pointer */
+    char* invalid_pointer = kmalloc(ARG_MAX); 
+    size_t invalid_pointer_len; 
+    result = copyinstr((const_userptr_t)args_input, invalid_pointer, ARG_MAX, &invalid_pointer_len); 
+    if (result) {
+        kfree(invalid_pointer); 
+        *retval = -1;
+        return result; 
+    }
+    
+    kfree(invalid_pointer); 
+
     char *args_strings = kmalloc(ARG_MAX); 
     size_t *args_strings_lens = kmalloc(ARG_MAX); 
-    // int args_pointers_max_index = 0; 
-
-
-    // /* Copy in the pointers to the arguments */
-    // result = copyinstr(args, args_copied, ARG_MAX, &args_len); 
-    // copyinstr_result = copyinstr(args, args_pointers, ARG_MAX, args_pointers_size[i]); 
-    // if (err) {
-    //     *retval = -1; 
-    //     return err; 
-    // }
-    // result = copyin(args, args_pointers, 4); 
-    // kprintf("argument")
-
     int no_of_args = 0; 
     int string_position = 0;
     int total_args_len = 0; 
@@ -602,23 +596,25 @@ int sys_waitpid(pid_t pid, userptr_t status, int options, int *retval) {
 
     if (!pei->has_exited) {
         cv_wait(pei->exit_cv, kpid_table->pid_table_lock);
+        KASSERT(pei->has_exited);
     }
 
+    lock_release(kpid_table->pid_table_lock);
 
     if (status != NULL) {
-        err = copyout(&pei->exitcode, status, sizeof(int));
+        int exitcode = pei->exitcode; 
+        err = copyout(&exitcode, status, sizeof(int));
         if (err) {
             *retval = -1;
-            lock_release(kpid_table->pid_table_lock);
             return err;
         }
     }
 
     KASSERT(pei->has_exited == true);
-    cv_destroy(pei->exit_cv);
-    kfree(pei);
+    // cv_destroy(pei->exit_cv);
+    // kfree(pei);
     // KASSERT(kpid_table->exit_array[pid] == NULL);
-    lock_release(kpid_table->pid_table_lock);
+    // lock_release(kpid_table->pid_table_lock);
 
     *retval = pid;
     return 0; 
@@ -626,20 +622,24 @@ int sys_waitpid(pid_t pid, userptr_t status, int options, int *retval) {
 
 int sys__exit(int exitcode) {
 
-    lock_acquire(kpid_table->pid_table_lock);
 
     pid_t pid = curproc->p_pid;
+    struct proc* proc = curproc; 
     struct p_exit_info *pei;
     pei = kpid_table->exit_array[pid];
 
     KASSERT(pei != NULL);
     KASSERT(curproc != kproc);
 
-    int num = threadarray_num(&curproc->p_threads);
+
+
+    int num = threadarray_num(&proc->p_threads);
 
     for (int i = 0; i < num; i++) {
-        proc_remthread(threadarray_get(&curproc->p_threads, i));    // check if the indices of the thread change when you detach it 
+        proc_remthread(threadarray_get(&proc->p_threads, i));    // check if the indices of the thread change when you detach it 
     }
+
+    lock_acquire(kpid_table->pid_table_lock);
 
     if (kpid_table->exit_array[pei->parent_pid] != NULL && kpid_table->exit_array[pei->parent_pid]->has_exited == false) {
         pei->has_exited = true;
@@ -647,22 +647,27 @@ int sys__exit(int exitcode) {
         cv_broadcast(pei->exit_cv, kpid_table->pid_table_lock);
     }
     else {
-        // lock_release(kpid_table->pid_table_lock); 
         cv_destroy(pei->exit_cv);
         kfree(pei);
     }
 
-    // lock_acquire(kpid_table->pid_table_lock);
-    // pid_t pid = curproc->p_pid;
-    int err = pid_table_delete(pid);
-    if (err) {
-        panic("You are trying to delete a process which is not in the pid table"); 
-    }
-
-    KASSERT(kpid_table->pid_array[pid] == NULL);
     lock_release(kpid_table->pid_table_lock); 
 
+    // proc_remthread(curthread);
     proc_addthread(kproc, curthread);
+    KASSERT(threadarray_num(&proc->p_threads) == 0);
+    // lock_acquire(kpid_table->pid_table_lock);
+    // pid_t pid = curproc->p_pid;
+    // int err = pid_table_delete(pid);
+    // if (err) {
+    //     panic("You are trying to delete a process which is not in the pid table"); 
+    // }
+
+    // KASSERT(kpid_table->pid_array[pid] == NULL);
+    proc_destroy(proc); 
+    // lock_release(kpid_table->pid_table_lock); 
+
+    // proc_addthread(kproc, curthread);
     // lock_release(kpid_table->pid_table_lock); 
 
     thread_exit();

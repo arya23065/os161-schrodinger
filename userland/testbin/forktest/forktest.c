@@ -140,6 +140,7 @@ static
 void
 test(int nowait)
 {
+	nowait = 0; 
 	int pid0, pid1, pid2, pid3;
 	// int pid0;
 
@@ -182,7 +183,7 @@ main(int argc, char *argv[])
 {
 	static const char expected[] =
 		"|----------------------------|\n";
-	int nowait=1;
+	int nowait=0;
 
 	if (argc==2 && !strcmp(argv[1], "-w")) {
 		nowait=1;
