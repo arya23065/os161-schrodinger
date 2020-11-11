@@ -140,7 +140,6 @@ static
 void
 test(int nowait)
 {
-	nowait = 0; 
 	int pid0, pid1, pid2, pid3;
 	// int pid0;
 

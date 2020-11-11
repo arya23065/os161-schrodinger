@@ -36,7 +36,7 @@ pid_table_init(void) {
     kpid_table->exit_array[1]->has_exited = false;
     kpid_table->exit_array[1]->parent_pid = 0;
     kpid_table->exit_array[1]->exit_cv = cv_create("KPROC CV");
-    kpid_table->exit_array[1]->has_exited = -1;
+    kpid_table->exit_array[1]->exitcode = 1;
     KASSERT(kpid_table->exit_array[1]->exit_cv != NULL);
 
     lock_release(kpid_table->pid_table_lock);
