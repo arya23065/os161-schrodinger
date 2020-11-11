@@ -8,7 +8,8 @@
 #include <synch.h>
 
 /*
- * PID Table structure.
+ * PID Table structure. This stores the processes and exit information in arrays indexed by the PID for a given process
+ * Also contains a lock for synchronization between threads
  */
 struct pid_table
 {
@@ -18,19 +19,20 @@ struct pid_table
 };
 
 /*
- * Struct for storing information for exit and waitpid
+ * Struct for storing exit information for exit and waitpid
  */
 struct p_exit_info
 {
 	pid_t parent_pid;
 	bool has_exited;			// true if process has exited, false if not
-	struct cv *exit_cv;
-	int exitcode;
+	struct cv *exit_cv;			// Condition variable for waiting for child process to exit, and to signal parent that child has exited
+	int exitcode;				// Exit code set by user after applyinf the _MKWAIT_EXIT() macro
 };
 
-/* This is the pid table structure for the kernel and for kernel-only threads. */
+/* This is the instance of the pid table structure that is accessible to the kernel for storing processes */
 extern struct pid_table *kpid_table;
 
+// PID table operations
 void pid_table_init(void);
 void pid_table_destroy(void);
 pid_t pid_table_add(struct proc *proc, int *err);
