@@ -659,10 +659,11 @@ int sys__exit(int exitcode) {
         panic("You are trying to delete a process which is not in the pid table"); 
     }
 
+    proc_addthread(kproc, curthread);
+
     KASSERT(kpid_table->pid_array[pid] == NULL);
     lock_release(kpid_table->pid_table_lock); 
 
-    proc_addthread(kproc, curthread);
     // lock_release(kpid_table->pid_table_lock); 
 
     thread_exit();

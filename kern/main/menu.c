@@ -141,8 +141,8 @@ common_prog(int nargs, char **args)
 	 * The new process will be destroyed when the program exits...
 	 * once you write the code for handling that.
 	 */
-
-	// sys_waitpid(1, NULL, 0, ); 
+	// int retval;
+	// result = sys_waitpid(proc->p_pid, NULL, 0, &retval); 
 
 	return 0;
 }
@@ -717,6 +717,6 @@ menu(char *args)
 		kgets(buf, sizeof(buf));
 		menu_execute(buf, 0);
 
-		// while(1){};
+		while(1){printf("yeet\n")};
 	}
 }
