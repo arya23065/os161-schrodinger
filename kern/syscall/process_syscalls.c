@@ -87,9 +87,9 @@ sys_fork(struct trapframe *tf, pid_t *retval) {
     //     *retval = -1; 
     //     return ENOMEM; 
     // } else {
-    // spinlock_acquire(&newproc->p_lock);
+    spinlock_acquire(&newproc->p_lock);
     err = as_copy(proc_getas(), &new_addrspace);
-    // spinlock_release(&newproc->p_lock);
+    spinlock_release(&newproc->p_lock);
 
     if (err) {
         // pid_table_delete(newproc->p_pid);
@@ -179,8 +179,8 @@ void child_fork(void *tf, unsigned long arg) {
     new_tf.tf_a3 = 0;
     new_tf.tf_epc += 4;     // Setting program counter so that same instruction doesn't run again
 
-    // proc_setas(curproc->p_addrspace); 
-    as_activate();
+    proc_setas(curproc->p_addrspace); 
+    as_activate();  //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     mips_usermode(&new_tf); 
 }
