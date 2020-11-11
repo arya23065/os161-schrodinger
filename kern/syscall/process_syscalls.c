@@ -187,49 +187,16 @@ void child_fork(void *tf, unsigned long arg) {
 
 int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
 
-    /*
-    * 1. copy arguments from the old address space - use copyin/out, and 'write your own function' - 
-    * - Where are the arguments located when exec is invoked? in the stack of the process that invoked the syscall - we have user pointers, 
-    * use them as we did for write and read 
-    * - In whose address space are they? In the addr space for that process 
-    * - How do you know their addresses? String array, program name, pointer to an array of strings
-    * - How do we get them into the kernel? Copyin
-    * - How do we know their total size? Copyin returns the size 
-    * - Where do the arguments need to end up before we return to the user mode? Whose address space? Stack or heap? 
-    * Copy out the arguments. In addition to kernel's heap(copy in), copy it out into the user stack 
-    * 
-    * Must copy in arguments from the old addrspace, then copy them out into the new addrspace
-    * 
-    * 2. get a new address space 
-    * 3. switch to the new address space   
-    * 4. load a new executable 
-    * 5. define a new stack region
-    * - check as_define_stack
-    * 
-    * 6. copy the arguments into the new address space, properly arranging them
-    * - Place new args on user space stakc (when you create a new process you have a pointer to this), decrement 
-    * the SP depending on the size of arguments (copy strings AND pointers)
-    * 
-    * 7. clean up the old address space 
-    * 8. return to user mode - consider using enter new process since mipsusermode only uses the trapframe 
-    * - use enter_new_process
-    * - Passed in registers - set this up in the trapframe before going to user mode 
-    * 
-    * 
-    */
-
    if (program == NULL || args == NULL) {
        *retval  = -1; 
        return EFAULT;
    }
 
-    // (void) program;
-    // (void) args;
-    // (void) retval;
     int result = 0;
 
     char *progname = kmalloc(PATH_MAX);
     if (progname == NULL) {
+        kfree(progname); 
         *retval = -1; 
         return ENOMEM; 
     }
@@ -237,28 +204,33 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
 
     result = copyinstr(program, progname, PATH_MAX, &progname_len);
     if (result) {
+        kfree(progname); 
         *retval = -1;
         return result;
     }
 
     if (progname_len == 1){
+        kfree(progname); 
         *retval = -1; 
         return EINVAL;
     }
 
+    kfree(progname); 
+
     char **args_input = (char**)args;
 
     /* To check if the arg is an invalid user pointer */
-    char* invalid_pointer = kmalloc(ARG_MAX); 
+    // char* invalid_pointer = kmalloc(ARG_MAX); 
+    char invalid_pointer; 
     size_t invalid_pointer_len; 
-    result = copyinstr((const_userptr_t)args_input, invalid_pointer, ARG_MAX, &invalid_pointer_len); 
+    result = copyinstr((const_userptr_t)args_input, &invalid_pointer, ARG_MAX, &invalid_pointer_len); 
     if (result) {
-        kfree(invalid_pointer); 
+        // kfree(invalid_pointer); 
         *retval = -1;
         return result; 
     }
     
-    kfree(invalid_pointer); 
+    // kfree(invalid_pointer); 
 
     char *args_strings = kmalloc(ARG_MAX); 
     size_t *args_strings_lens = kmalloc(ARG_MAX); 
@@ -268,14 +240,13 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
 
     for (int i = 0; i < ARG_MAX; i++) {
         if (args_input[i] == 0) {
-            // args_strings[i] = NULL;
             break; 
         } else {
             /* The first argument is the program name */
-            // args_strings[i] = args_input[i + 1]; 
-            // result = copyinstr((const_userptr_t)args_input[i+1], &args_strings[string_position], ARG_MAX, &args_strings_lens[i]);
             result = copyinstr((const_userptr_t)args_input[i], &args_strings[string_position], ARG_MAX, &args_strings_lens[i]);
             if (result) {
+                kfree(args_strings);
+                kfree(args_strings_lens);
                 *retval = -1;
                 return result;
             }
@@ -303,66 +274,11 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
     }
 
     if (total_args_len >  ARG_MAX) {
-        //kfree everything needed 
+        kfree(args_strings);
+        kfree(args_strings_lens); 
         *retval = -1; 
         return E2BIG; 
     }
-
-    // char* null_char = 0; 
-
-    // /* Padding the string arguments */
-    // for (int i = 0; i < no_of_args; i++) {
-    //     int pad = 0; 
-
-    //     for (int j = 0; j <= 8; j++) {
-    //         if (pad == 0 && args_strings[i][j] == 0) {
-    //             pad = 1; 
-    //         } else if (pad == 1) {
-    //         }
-    //     }
-    // }
-
-
-    // kprintf("the first argument is %s", args_strings[0]); 
-
-
-    // int args_iterator = 0; 
-    // for (int i = 0; i < ARG_MAX; i++) {
-    //     if (args_input[i] == NULL) {
-    //         // args_pointers_max_index = i - 1;    // if argspointer max index is null there arent any arguments  
-    //         break; 
-    //     } else {
-    //         result = copyinstr((const_userptr_t)args_input[i], &args_pointers[args_iterator], ARG_MAX, &args_pointers_size[i]); 
-    //         if (result) {
-    //             *retval = -1; 
-    //             return result; 
-    //         }
-    //         args_iterator += args_pointers_size[i]; 
-    //     }
-    // }
-
-    // kprintf("argument 0 is %s\n", args_input[0]); 
-    // kprintf("argument 1 is %s\n", args_input[1]); 
-    // kprintf("argument 2 is %s\n", args_input[2]); 
-    // kprintf("argument 3 is %s\n", args_input[3]); 
-    // kprintf("progname is is %s\n", progname); 
-
-
-    // for (int i = 0; i < args_pointers_max_index; i++) {
-    //     err = copyinstr(args_pointers[i], args_strings[i], ARG_MAX, args_strings_size[i]); 
-    //     if (err) {
-    //         *retval = -1; 
-    //         return err; 
-    //     }
-    // }
-
-    // int i = 0;
-
-    // while (1) {
-    //     err = copyin(args + i * 4, args_pointers[i], 4);
-    //     if (args_pointers[i] = 0)
-    //         break;
-    // }
 
     struct addrspace *as_new;
     struct addrspace *as_old = curproc->p_addrspace; 
@@ -375,6 +291,8 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
 	/* Open the file. */
 	result = vfs_open(buf, O_RDONLY, 0, &v);
 	if (result) {
+        kfree(args_strings);
+        kfree(args_strings_lens); 
         *retval = -1; 
 		return result;
 	}
@@ -385,33 +303,28 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
 	/* Create a new address space. */
 	as_new = as_create();
 	if (as_new == NULL) {
+        kfree(args_strings);
+        kfree(args_strings_lens); 
 		vfs_close(v);
         *retval = -1; 
 		return ENOMEM;
 	}
 
-    // /* If there is a current address space, deactivate it */
-	// if (curproc_getas() != NULL) {
-	// 	as_deactivate();
-	// }
 
 	/* Switch to it and activate it. */
 	as_old = proc_setas(as_new);
-    // if (as_old != NULL) {
-	// 	as_destroy(as_old);
-	// }
 
 	as_activate();
 
 	/* Load the executable. If it fails, switch back to the old addrspace and activate it */
 	result = load_elf(v, &entrypoint);
 	if (result) {
-		/* p_addrspace will go away when curproc is destroyed */
+		kfree(args_strings);
+        kfree(args_strings_lens); 
 		vfs_close(v);
         proc_setas(as_old);
         as_activate();
         as_destroy(as_new);
-        // kfree(newname);
 		return result;
 	}
 
@@ -421,15 +334,14 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
 	/* Define the user stack in the address space */
 	result = as_define_stack(as_new, &stackptr);
 	if (result) {
-		/* p_addrspace will go away when curproc is destroyed */
+        kfree(args_strings);
+        kfree(args_strings_lens); 
+        proc_setas(as_old);
+        as_activate();
+        as_destroy(as_new);
+        *retval = -1; 
 		return result;
 	}
-
-    // stackptr -= total_args_len;
-
-
-    // stackptr -= (no_of_args * 8 + 1);
-    // stackptr -= (total_args_len);
 
     stackptr -= ((no_of_args + 1) * 4 + total_args_len);
     // stackptr -= (total_args_len);
@@ -437,15 +349,7 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
     char *argv_kernel[no_of_args + 1]; // + 1 for NULL at the end
     userptr_t argv = (userptr_t)stackptr;
 
-
-
-    // userptr_t *user_args_strings = kmalloc(no_of_args);
-    // userptr_t user_args_strings[no_of_args];
-
-
     /* Coying out pointers */
-    // args_position += args_strings_lens[no_of_args]; 
-    // size_t user_args_position = 0; 
     size_t size = 0; 
     size_t strings_pos = (no_of_args + 1) * 4; 
 
@@ -461,17 +365,12 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
             dest = (userptr_t)((char *)user_args_strings + strings_pos);
             result = copyoutstr(&args_strings[strings_pos - (no_of_args + 1) * 4], dest, (size_t) args_strings_lens[i], &size); 
         } 
-        // else {
-        //     char null_char = 0; 
-        //     result = copyoutstr(&null_char, &user_args_strings[strings_pos], 8, &size); 
-        //     strings_pos += 8; 
-        // }
         if (result) {
-            /* p_addrspace will go away when curproc is destroyed */
+            kfree(args_strings);
+            kfree(args_strings_lens); 
             proc_setas(as_old);
             as_activate();
             as_destroy(as_new);
-            // kfree(newname);
             *retval = -1; 
             return result;
         }
@@ -483,74 +382,14 @@ int sys_execv(const_userptr_t program, const_userptr_t  args, int *retval) {
     // char** testing = (char**) argv; 
     // (void) testing; 
     if (result) {
-        /* p_addrspace will go away when curproc is destroyed */
+        kfree(args_strings);
+        kfree(args_strings_lens); 
         proc_setas(as_old);
         as_activate();
         as_destroy(as_new);
-        // kfree(newname);
         *retval = -1; 
-        return result;
+		return result;
     }
-
-
-    // for (int i = 0; i <= no_of_args; i++) {
-    //     if (i == 0) {
-    //         result = copyoutstr(&args_strings[0], &user_args_strings[strings_pos], (size_t) args_strings_lens[i], &size); 
-    //     } else if (i < no_of_args) {
-    //         strings_pos += args_strings_lens[i - 1]; 
-    //         result = copyoutstr(&args_strings[strings_pos - no_of_args * 8], &user_args_strings[strings_pos], (size_t) args_strings_lens[i], &size); 
-    //     } 
-    //     // else {
-    //     //     char null_char = 0; 
-    //     //     result = copyoutstr(&null_char, &user_args_strings[strings_pos], 8, &size); 
-    //     //     strings_pos += 8; 
-    //     // }
-    //     if (result) {
-    //         /* p_addrspace will go away when curproc is destroyed */
-    //         proc_setas(as_old);
-    //         as_activate();
-    //         as_destroy(as_new);
-    //         // kfree(newname);
-    //         *retval = -1; 
-    //         return result;
-    //     }
-    // }
-
-    // size_t pointers_pos = 0; 
-    // strings_pos = no_of_args * 8; 
-    // char **user_args = (char**)user_args_strings;
-    // char *pointer_addr; 
-    // userptr_t argv = (userptr_t)stackptr;
-    
-    // for (int i = 0; i <= no_of_args; i++) {
-
-    //     if (i == 0) {
-    //         pointer_addr = user_args[strings_pos]; 
-    //     } else if (i < no_of_args) {
-    //         strings_pos += args_strings_lens[i - 1];
-    //         pointer_addr = user_args[strings_pos]; 
-    //     } 
-    //     else {
-    //         char null_char = 0; 
-    //         result = copyout(&null_char, &argv[pointers_pos], 8); 
-    //     }
-
-    //     result = copyout(&pointer_addr, &argv[pointers_pos], 8); 
-    //     pointers_pos += 8; 
-    //     // args_position += size; 
-
-    //     if (result) {
-    //         /* p_addrspace will go away when curproc is destroyed */
-    //         proc_setas(as_old);
-    //         as_activate();
-    //         as_destroy(as_new);
-    //         // kfree(newname);
-    //         *retval = -1; 
-    //         return result;
-    //     }
-    // }
-
-
 
 	/* Warp to user mode. */
 	enter_new_process(no_of_args, argv, NULL, stackptr, entrypoint);
@@ -626,7 +465,6 @@ int sys__exit(int exitcode) {
     pid_t pid = curproc->p_pid;
     struct proc* proc = curproc; 
     struct p_exit_info *pei;
-    struct proc *proc = curproc;
     pei = kpid_table->exit_array[pid];
 
     KASSERT(pei != NULL);
@@ -634,12 +472,12 @@ int sys__exit(int exitcode) {
 
 
 
-    int num = threadarray_num(&proc->p_threads);
+    // int num = threadarray_num(&proc->p_threads);
 
     // proc_remthread(curthread);
-    for (int i = 0; i < num; i++) {
-        proc_remthread(threadarray_get(&proc->p_threads, i));    // check if the indices of the thread change when you detach it 
-    }
+    // for (int i = 0; i < num; i++) {
+    //     proc_remthread(threadarray_get(&proc->p_threads, i));    // check if the indices of the thread change when you detach it 
+    // }
 
     lock_acquire(kpid_table->pid_table_lock);
 
@@ -655,7 +493,7 @@ int sys__exit(int exitcode) {
 
     lock_release(kpid_table->pid_table_lock); 
 
-    // proc_remthread(curthread);
+    proc_remthread(curthread);
     proc_addthread(kproc, curthread);
     KASSERT(threadarray_num(&proc->p_threads) == 0);
     // lock_acquire(kpid_table->pid_table_lock);
