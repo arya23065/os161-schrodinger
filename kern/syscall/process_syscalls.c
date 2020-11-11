@@ -630,16 +630,20 @@ int sys__exit(int exitcode) {
 
     pid_t pid = curproc->p_pid;
     struct p_exit_info *pei;
+    struct proc *proc = curproc;
     pei = kpid_table->exit_array[pid];
 
     KASSERT(pei != NULL);
-    KASSERT(curproc != kproc);
+    KASSERT(proc != kproc);
 
     int num = threadarray_num(&curproc->p_threads);
 
+    // proc_remthread(curthread);
     for (int i = 0; i < num; i++) {
         proc_remthread(threadarray_get(&curproc->p_threads, i));    // check if the indices of the thread change when you detach it 
     }
+
+    // KASSERT(threadarray_num(&curproc->p_threads) == 0);
 
     if (kpid_table->exit_array[pei->parent_pid] != NULL && kpid_table->exit_array[pei->parent_pid]->has_exited == false) {
         pei->has_exited = true;
@@ -654,17 +658,15 @@ int sys__exit(int exitcode) {
 
     // lock_acquire(kpid_table->pid_table_lock);
     // pid_t pid = curproc->p_pid;
-    int err = pid_table_delete(pid);
-    if (err) {
-        panic("You are trying to delete a process which is not in the pid table"); 
-    }
-
     proc_addthread(kproc, curthread);
+    // int err = pid_table_delete(pid);
+    // if (err) {
+    //     panic("You are trying to delete a process which is not in the pid table"); 
+    // }
 
-    KASSERT(kpid_table->pid_array[pid] == NULL);
+    // KASSERT(kpid_table->pid_array[pid] == NULL);
+    proc_destroy(proc);
     lock_release(kpid_table->pid_table_lock); 
-
-    // lock_release(kpid_table->pid_table_lock); 
 
     thread_exit();
 }
