@@ -47,6 +47,7 @@
  * implementation.
  */
 
+
 /*
  * Important, both as part of the system call API and for system behavior.
  *
@@ -56,13 +57,14 @@
  */
 
 /* Longest filename (without directory) not including null terminator */
-#define __NAME_MAX 255
+#define __NAME_MAX      255
 
 /* Longest full path name */
-#define __PATH_MAX 1024
+#define __PATH_MAX      1024
 
 /* Max bytes for an exec function (should be at least 16K) */
-#define __ARG_MAX (64 * 1024)
+#define __ARG_MAX       (64 * 1024)
+
 
 /*
  * Important for system behavior, but not a big part of the API.
@@ -72,16 +74,20 @@
  */
 
 /* Min value for a process ID (that can be assigned to a user process) */
-#define __PID_MIN 2
+#define __PID_MIN       2
 
 /* Max value for a process ID (change this to match your implementation) */
-#define __PID_MAX 32767
+#define __PID_MAX       32767
 
 /* Max open files per process */
-#define __OPEN_MAX 32
+#define __OPEN_MAX      128
 
 /* Max bytes for atomic pipe I/O -- see description in the pipe() man page */
-#define __PIPE_BUF 512
+#define __PIPE_BUF      512
+
+/* Max number of processes at once. */
+#define __PROCS_MAX       128
+
 
 /*
  * Not so important parts of the API. (Especially in OS/161 where we
@@ -89,16 +95,18 @@
  */
 
 /* Max number of supplemental group IDs in process credentials */
-#define __NGROUPS_MAX 32
+#define __NGROUPS_MAX   32
 
 /* Max login name size (for setlogin/getlogin), incl. null */
 #define __LOGIN_NAME_MAX 17
+
 
 /*
  * Not very important at all.
  */
 
 /* Max number of iovec structures at once for readv/writev/preadv/pwritev */
-#define __IOV_MAX 1024
+#define __IOV_MAX       1024
+
 
 #endif /* _KERN_LIMITS_H_ */

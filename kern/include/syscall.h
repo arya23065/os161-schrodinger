@@ -30,11 +30,8 @@
 #ifndef _SYSCALL_H_
 #define _SYSCALL_H_
 
-#include <types.h> 
 
 #include <cdefs.h> /* for __DEAD */
-
-
 struct trapframe; /* from <machine/trapframe.h> */
 
 /*
@@ -54,43 +51,35 @@ void enter_forked_process(struct trapframe *tf);
 __DEAD void enter_new_process(int argc, userptr_t argv, userptr_t env,
 		       vaddr_t stackptr, vaddr_t entrypoint);
 
+/* Setup function for exec. */
+void exec_bootstrap(void);
+
 
 /*
  * Prototypes for IN-KERNEL entry points for system call implementations.
+ *
+ * Note that we use userptr_t's for userspace pointers, so that there
+ * isn't any confusion about what space the pointers are in.
  */
 
 int sys_reboot(int code);
 int sys___time(userptr_t user_seconds, userptr_t user_nanoseconds);
 
-/*
- * System calls to handle files
- */
+int sys_fork(struct trapframe *tf, pid_t *retval);
+int sys_execv(userptr_t prog, userptr_t args);
+__DEAD void sys__exit(int code);
+int sys_waitpid(pid_t pid, userptr_t returncode, int flags, pid_t *retval);
+int sys_getpid(pid_t *retval);
 
 int sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval);
-int sys_write(int fd, const void *buf, size_t nbytes, int *retval); 
-int sys_lseek(int fd, off_t pos, int whence, off_t *retval); 
-int sys_close(int fd, int *retval); 
-int sys_read(int fd, void *buf, size_t buflen, int *retval);
 int sys_dup2(int oldfd, int newfd, int *retval);
+int sys_close(int fd);
+int sys_read(int fd, userptr_t buf, size_t size, int *retval);
+int sys_write(int fd, userptr_t buf, size_t size, int *retval);
+int sys_lseek(int fd, off_t offset, int code, off_t *retval);
 
-/*
- * System calls to handle the directory of the current process
- */
-
-int sys_chdir(const_userptr_t pathname, int *retval); 
-int sys_getcwd(userptr_t buf, size_t buflen, int *retval); 
-
-/*
- * System calls to handle processes
- */
-
-int sys_fork(struct trapframe *tf, pid_t *retval);
-void child_fork(void *tf, unsigned long arg); 
-int sys_execv(const_userptr_t program, const_userptr_t args, int *retval);
-int sys_getpid(pid_t* retval);
-int sys_waitpid(pid_t pid, userptr_t status, int options, int *retval);
-int sys__exit(int exitcode);
-
+int sys_chdir(const_userptr_t path);
+int sys___getcwd(userptr_t buf, size_t buflen, int *retval);
 
 
 #endif /* _SYSCALL_H_ */
