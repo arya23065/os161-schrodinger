@@ -7,7 +7,7 @@
  * are met:
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binsary form must reproduce the above copyright
+ * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  * 3. Neither the name of the University nor the names of its contributors
@@ -46,10 +46,10 @@
 #include <mainbus.h>
 #include <vfs.h>
 #include <device.h>
+#include <pid.h>
 #include <syscall.h>
 #include <test.h>
 #include <version.h>
-#include <pid_table.h>
 #include "autoconf.h"  // for pseudoconfig
 
 
@@ -71,6 +71,7 @@ extern const char buildconfig[];
 static const char harvard_copyright[] =
     "Copyright (c) 2000, 2001-2005, 2008-2011, 2013, 2014\n"
     "   President and Fellows of Harvard College.  All rights reserved.\n";
+
 
 /*
  * Initial boot sequence.
@@ -98,6 +99,7 @@ boot(void)
 
 	kprintf("\n");
 	kprintf("OS/161 base system version %s\n", BASE_VERSION);
+	kprintf("(with locks/CVs, system calls solutions)\n");
 	kprintf("%s", harvard_copyright);
 	kprintf("\n");
 
@@ -109,6 +111,7 @@ boot(void)
 	ram_bootstrap();
 	proc_bootstrap();
 	thread_bootstrap();
+	pid_bootstrap();
 	hardclock_bootstrap();
 	vfs_bootstrap();
 	kheap_nextgeneration();
@@ -126,6 +129,7 @@ boot(void)
 	/* Late phase of initialization. */
 	vm_bootstrap();
 	kprintf_bootstrap();
+	exec_bootstrap();
 	thread_start_cpus();
 
 	/* Default bootfs - but ignore failure, in case emu0 doesn't exist */
@@ -153,7 +157,6 @@ shutdown(void)
 	vfs_clearbootfs();
 	vfs_clearcurdir();
 	vfs_unmountall();
-	pid_table_destroy();
 
 	thread_shutdown();
 
@@ -210,12 +213,6 @@ void
 kmain(char *arguments)
 {
 	boot();
-
-	pid_table_init(); 
-
-	// lock_acquire(kpid_table->pid_table_lock);
-	// kpid_table->pid_array[1] = kproc;
-	// lock_release(kpid_table->pid_table_lock);
 
 	menu(arguments);
 

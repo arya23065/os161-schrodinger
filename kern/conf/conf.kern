@@ -331,12 +331,7 @@ file      thread/threadlist.c
 #
 
 file      proc/proc.c
-
-#
-# PID Table system
-#
-
-file      syscall/pid_table.c
+file      proc/pid.c
 
 #
 # Virtual memory system
@@ -379,16 +374,13 @@ file      vfs/devnull.c
 # calls assignment.)
 #
 
+file      syscall/filetable.c
 file      syscall/loadelf.c
+file      syscall/openfile.c
 file      syscall/runprogram.c
-file      syscall/time_syscalls.c
-file      syscall/open_file.c
-file      syscall/open_filetable.c
 file      syscall/file_syscalls.c
-file      syscall/directory_syscalls.c
-file      syscall/process_syscalls.c
-
-
+file      syscall/proc_syscalls.c
+file      syscall/time_syscalls.c
 
 #
 # Startup and initialization
@@ -437,19 +429,12 @@ defoption netfs
 
 ########################################
 #                                      #
-#  Synchronization problems assignment #
-#                                      #
-########################################
-
-defoption synchprobs
-optfile   synchprobs  synchprobs/airballoon.c
-
-
-########################################
-#                                      #
 #              Test code               #
 #                                      #
 ########################################
+
+# For testing the wait implementation.
+file		test/waittest.c
 
 file		test/arraytest.c
 file		test/bitmaptest.c
