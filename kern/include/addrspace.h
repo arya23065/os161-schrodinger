@@ -40,6 +40,32 @@
 
 struct vnode;
 
+/*
+ * Page Table Entry struct.
+ * Stores information about an entry in the page table
+ */
+
+struct pagetable_entry {
+    vaddr_t vpn;      // Virtual address
+    paddr_t ppn;      // Physical address
+    unsigned int perm;  // Permissions
+};
+
+
+/*
+ * Region struct
+ * Consists information about regions in the address space such as the
+ * virtual and physical base, along with the number of pages that the
+ * region spans
+ */
+
+struct region {
+    vaddr_t vbase;
+    paddr_t pbase;
+    unsigned int perm;
+    size_t npages;
+}
+
 
 /*
  * Address space - data structure associated with the virtual memory
@@ -59,6 +85,10 @@ struct addrspace {
         paddr_t as_stackpbase;
 #else
         /* Put stuff here for your VM system */
+        struct pagetable_entry **pagetable;
+        struct region **regions;
+        size_t pagetable_len, regions_len;
+        vaddr_t as_stackbase, as_stackend;
 #endif
 };
 
@@ -127,6 +157,12 @@ int               as_define_stack(struct addrspace *as, vaddr_t *initstackptr);
  */
 
 int load_elf(struct vnode *v, vaddr_t *entrypoint);
+
+
+/* PAGETABLE OPERATIONS */
+void pagetable_create(struct pagetable_entry **pagetable, size_t size);
+void pagetable_destroy(struct pagetable_entry **pagetable);
+struct pagetable_entry * pagetable_get_entry(struct pagetable_entry **pagetable, vaddr_t vpn);
 
 
 #endif /* _ADDRSPACE_H_ */
