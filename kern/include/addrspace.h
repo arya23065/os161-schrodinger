@@ -45,7 +45,7 @@ struct vnode;
  * Stores information about an entry in the page table
  */
 
-struct pagetable_entry {
+struct pt_entry {
     vaddr_t vpn;      // Virtual address
     paddr_t ppn;      // Physical address
     unsigned int perm;  // Permissions
@@ -85,9 +85,9 @@ struct addrspace {
         paddr_t as_stackpbase;
 #else
         /* Put stuff here for your VM system */
-        struct pagetable_entry **pagetable;
         struct region **regions;
-        size_t pagetable_len, regions_len;
+        struct pt_entry **pagetable;
+        size_t regions_len;
         vaddr_t as_stackbase, as_stackend;
 #endif
 };
@@ -160,9 +160,9 @@ int load_elf(struct vnode *v, vaddr_t *entrypoint);
 
 
 /* PAGETABLE OPERATIONS */
-void pagetable_create(struct pagetable_entry **pagetable, size_t size);
-void pagetable_destroy(struct pagetable_entry **pagetable);
-struct pagetable_entry * pagetable_get_entry(struct pagetable_entry **pagetable, vaddr_t vpn);
+void pagetable_create(struct pt_entry **pagetable, size_t size);
+void pagetable_destroy(struct pt_entry **pagetable);
+struct pagetable_entry * pagetable_get_entry(struct pt_entry **pagetable, vaddr_t vpn);
 
 
 #endif /* _ADDRSPACE_H_ */
