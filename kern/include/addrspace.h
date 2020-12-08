@@ -64,7 +64,7 @@ struct region {
     paddr_t pbase;
     unsigned int perm;
     size_t npages;
-}
+};
 
 
 /*
