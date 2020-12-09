@@ -48,7 +48,7 @@ struct vnode;
 struct pt_entry {
     vaddr_t vpn;      // Virtual address
     paddr_t ppn;      // Physical address
-    unsigned int perm;  // Permissions
+    unsigned int perm;  // Permissions - if readable 001, if writeable 010, if executable 100
 };
 
 
@@ -86,9 +86,10 @@ struct addrspace {
 #else
         /* Put stuff here for your VM system */
         struct region **regions;
-        struct pt_entry **pagetable;
-        size_t regions_len;
+        struct pt_entry **pagetable; // max entries is from 0 to top of stack  - 2^20 pages/process
+        size_t regions_len; // why do we need this????????????
         vaddr_t as_stackbase, as_stackend;
+        // add support for heap - start and end addresses
 #endif
 };
 
@@ -160,9 +161,9 @@ int load_elf(struct vnode *v, vaddr_t *entrypoint);
 
 
 /* PAGETABLE OPERATIONS */
-void pagetable_create(struct pt_entry **pagetable, size_t size);
+struct pagetable_entry *pagetable_create(struct pt_entry **pagetable, size_t size); // create e pagetable entry
 void pagetable_destroy(struct pt_entry **pagetable);
-struct pagetable_entry * pagetable_get_entry(struct pt_entry **pagetable, vaddr_t vpn);
+struct pagetable_entry *pagetable_get_entry(struct pt_entry **pagetable, vaddr_t vpn);
 
 
 #endif /* _ADDRSPACE_H_ */

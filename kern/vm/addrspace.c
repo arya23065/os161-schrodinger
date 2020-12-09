@@ -54,6 +54,12 @@ as_create(void)
 	 * Initialize as needed.
 	 */
 
+	as->regions = NULL; 
+	as->pagetable = NULL; 
+	as->regions_len = 0; // why do we need this????????????
+	as->as_stackbase = (vaddr_t) 0; 
+	as->as_stackend = (vaddr_t) 0; 
+
 	return as;
 }
 
@@ -104,6 +110,19 @@ as_activate(void)
 	/*
 	 * Write this.
 	 */
+
+	/* Disable interrupts on this CPU while frobbing the TLB. */
+	spl = splhigh();
+
+
+	// basically invalidate the entire tlb so it seems like a fresh one / shootdown all entries of the tlb
+	// for (i=0; i<NUM_TLB; i++) {
+	// 	tlb_write(TLBHI_INVALID(i), TLBLO_INVALID(), i);
+	// }
+
+	// vm_tlbshootdown_all(); 
+
+	splx(spl);
 }
 
 void
@@ -133,14 +152,34 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 	/*
 	 * Write this.
 	 */
+	size_t npages;
 
-	(void)as;
-	(void)vaddr;
-	(void)sz;
-	(void)readable;
-	(void)writeable;
-	(void)executable;
-	return ENOSYS;
+	/* Align the region. First, the base... */
+	sz += vaddr & ~(vaddr_t)PAGE_FRAME;
+	vaddr &= PAGE_FRAME;
+
+	/* ...and now the length. */
+	sz = (sz + PAGE_SIZE - 1) & PAGE_FRAME;
+	npages = sz / PAGE_SIZE;
+
+	unsigned int permissions = readable? 1 : (writeable? 2 : (executable? 4 : 0)); 
+
+	struct region *init_region = kmalloc(sizeof(region)); 
+	
+	if (init_region == NULL) {
+		return ENOMEM; 
+	}
+
+	init_region->npages = npages; 
+	init_region->perm = permissions; 
+	init_region->vbase = vaddr; 
+
+	// for an as created using as copy, is this called before or after - in this case, 
+	// we may need to add this region after the copied regions (index wont be 0, but instead regionsize)
+	as->regions[0] = &init_region;
+
+	// return ENOSYS;
+	return 0; 
 }
 
 int

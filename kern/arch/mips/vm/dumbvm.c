@@ -100,6 +100,9 @@ free_kpages(vaddr_t addr)
 {
 	/* nothing - leak the memory. */
 
+	// This function will be interfacing with the core map because for each page it 
+	// frees it has to look it up in the coremap and invalidate it in both the coremap as well as in the owner thread’s page table.
+
 	(void)addr;
 }
 
