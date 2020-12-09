@@ -60,6 +60,7 @@ struct coremap_page {
     vaddr_t v_addr; 
     paddr_t p_addr; 
     coremap_page_status status; 
+    unsigned long block_len; 
 
     // add other info we may need for the paging algorithm
 }
