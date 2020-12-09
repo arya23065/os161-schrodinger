@@ -16,7 +16,7 @@ paddr_t free_addr;
 /* Coremap - an array of coremap pages / physical pages */
 struct coremap_page *coremap; 
 static struct spinlock coremap_lock = SPINLOCK_INITIALIZER;
-unsigned int num_coremap_pages; 
+unsigned long num_coremap_pages; 
 bool bootstrap_done; 
 
 void vm_bootstrap(void) {
@@ -37,7 +37,7 @@ void vm_bootstrap(void) {
     // coremap = &coremap_first_page;
 
     /* Total number of pages on system */
-    num_coremap_pages = (last_addr - first_addr) / PAGE_SIZE; 
+    num_coremap_pages = (last_addr - 0) / PAGE_SIZE; 
     // free_addr = first_addr + num_coremap_pages * ROUNDUP(sizeof(struct coremap_entry), PAGE_SIZE); 
     free_addr = first_addr + num_coremap_pages * sizeof(struct coremap_page); 
 
