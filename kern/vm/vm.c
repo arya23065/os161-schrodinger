@@ -113,7 +113,7 @@ getppages(unsigned long npages) {
                 // when evicting a page, based on the replaement policy, flush its content, mark it's status as clean 
             } else if (coremap[i].status == FREE) {
                 // checking that there is a contiguous block of npages that are free
-                for (unsigned long j = 1; j < npages; j++) {
+                for (unsigned long j = 0; j < npages; j++) {
                     if (coremap[i + j].status != FREE) {
                         space_found = false; 
                         break;
