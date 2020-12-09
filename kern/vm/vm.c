@@ -16,7 +16,7 @@ paddr_t free_addr;
 /* Coremap - an array of coremap pages / physical pages */
 struct coremap_page **coremap; 
 static struct spinlock coremap_lock = SPINLOCK_INITIALIZER;
-int num_coremap_pages; 
+unsigned int num_coremap_pages; 
 bool bootstrap_done; 
 
 void vm_bootstrap(void) {
@@ -30,34 +30,35 @@ void vm_bootstrap(void) {
 
     /* Manually assigning physical memory for the core map*/
     // coremap = (const struct coremap_page*) PADDR_TO_KVADDR(first_addr);
-    coremap_pages = (struct coremap_page*) PADDR_TO_KVADDR(first_addr);
+    struct coremap_page* coremap_pages = (struct coremap_page*) PADDR_TO_KVADDR(first_addr);
 
-    spinlock_acquire(coremap_lock); 
+    spinlock_acquire(&coremap_lock); 
     coremap = &coremap_pages; 
 
     /* Total number of pages on system */
     num_coremap_pages = (last_addr - first_addr) / PAGE_SIZE; 
     // free_addr = first_addr + num_coremap_pages * ROUNDUP(sizeof(struct coremap_entry), PAGE_SIZE); 
-    free_addr = first_addr + num_coremap_pages * sizeof(struct coremap_entry); 
+    free_addr = first_addr + num_coremap_pages * sizeof(struct coremap_page); 
 
-    for (int i = 0; i < num_coremap_pages; i++) {
+    for (unsigned long i = 0; i < num_coremap_pages; i++) {
         // if the first addr isn't 0, then that means that some pages are already in use by the current proc
         if (i < (first_addr - 0) / PAGE_SIZE) {
             coremap[i]->status = DIRTY; 
-            coremap[i]->p_addr = i * PAGE_SIZE; 
+            // coremap[i]->p_addr = i * PAGE_SIZE; 
         } else {
             if (i < (free_addr - first_addr) / PAGE_SIZE) {
                 coremap[i]->status = FIXED; 
             } else {
                 coremap[i]->status = FREE; 
             }
-            coremap[i]->p_addr = first_addr + i * PAGE_SIZE; 
+            // coremap[i]->p_addr = i * PAGE_SIZE; 
         }
         coremap[i]->v_addr = PADDR_TO_KVADDR(coremap[i]->p_addr); // check this!!!!!
         coremap[i]->block_len = 0; 
+        coremap[i]->p_addr = i * PAGE_SIZE; 
     }
 
-    spinlock_release(coremap_lock); 
+    spinlock_release(&coremap_lock); 
 
     bootstrap_done = true; 
 
@@ -80,17 +81,16 @@ static
 paddr_t
 getppages(unsigned long npages) {
 
-    spinlock_acquire(&stealmem_lock);
-    spinlock_acquire(coremap_lock); 
+    // spinlock_acquire(&stealmem_lock);
     paddr_t addr;
     unsigned long ppage_got = 0;
     bool first_ppage_got = false; 
     bool space_found = false; 
 
     if (bootstrap_done) {
-        spinlock_acquire(coremap_lock); 
+        spinlock_acquire(&coremap_lock); 
 
-        for (int i = 0; i < num_coremap_pages; i++) {
+        for (unsigned long i = 0; i < num_coremap_pages; i++) {
             if (ppage_got == npages) {
                 break; 
             }
@@ -99,9 +99,8 @@ getppages(unsigned long npages) {
                 // need a replacement policy!!!!!!!!!!!!!!! - must never be a fixed page!!!!!
                 // when evicting a page, based on the replaement policy, flush its content, mark it's status as clean 
             } else if (coremap[i]->status == FREE) {
-
                 // checking that there is a contiguous block of npages that are free
-                for (int j = 1; j < npages; j++) {
+                for (unsigned long j = 1; j < npages; j++) {
                     if (coremap[i + j]->status != FREE) {
                         space_found = false; 
                         break;
@@ -122,7 +121,7 @@ getppages(unsigned long npages) {
             }
         }
         
-        spinlock_release(coremap_lock); 
+        spinlock_release(&coremap_lock); 
         
     } else {
         // if the core map hasn't been initilised, we must directly take pages from the ram, without any action related to the coremap
@@ -130,8 +129,8 @@ getppages(unsigned long npages) {
         addr = ram_stealmem(npages);
     }
 
-    spinlock_release(&stealmem_lock);
-    return addr
+    // spinlock_release(&stealmem_lock);
+    return addr;
 }
 
 vaddr_t alloc_kpages(unsigned npages) {
@@ -153,12 +152,12 @@ void free_kpages(vaddr_t addr) {
     //  If the page is dirty, it must first be written to the backing store or swap (discussed below).
     // https://www.eecg.utoronto.ca/~yuan/teaching/ece344/asst4.html
 
-    spinlock_acquire(coremap_lock); 
-    unsigned long npages = 0; 
+    spinlock_acquire(&coremap_lock); 
+    unsigned long npages = 0;
     unsigned long pages_freed = 0; 
     bool page_found = false; 
 
-    for (int i = 0; i < num_coremap_pages; i++) {
+    for (unsigned long i = 0; i < num_coremap_pages; i++) {
         if (!page_found) {
             if (coremap[i]->v_addr == addr) {
                 KASSERT(coremap[i]->status != FIXED); // fixed pages cannot be freed
@@ -173,7 +172,6 @@ void free_kpages(vaddr_t addr) {
                 break;
             } else {
                 coremap[i]->status = FREE; 
-                npages = coremap[i]->block_len; 
                 pages_freed++; 
             }
 
@@ -181,7 +179,7 @@ void free_kpages(vaddr_t addr) {
 
     }
 
-    spinlock_release(coremap_lock); 
+    spinlock_release(&coremap_lock); 
 }
 
 void vm_tlbshootdown_all(void) {

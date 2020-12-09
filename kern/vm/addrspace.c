@@ -112,7 +112,7 @@ as_activate(void)
 	 */
 
 	/* Disable interrupts on this CPU while frobbing the TLB. */
-	spl = splhigh();
+	// spl = splhigh();
 
 
 	// basically invalidate the entire tlb so it seems like a fresh one / shootdown all entries of the tlb
@@ -122,7 +122,7 @@ as_activate(void)
 
 	// vm_tlbshootdown_all(); 
 
-	splx(spl);
+	// splx(spl);
 }
 
 void
@@ -164,7 +164,7 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 
 	unsigned int permissions = readable? 1 : (writeable? 2 : (executable? 4 : 0)); 
 
-	struct region *init_region = kmalloc(sizeof(region)); 
+	struct region *init_region = kmalloc(sizeof(struct region)); 
 	
 	if (init_region == NULL) {
 		return ENOMEM; 
@@ -176,7 +176,7 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 
 	// for an as created using as copy, is this called before or after - in this case, 
 	// we may need to add this region after the copied regions (index wont be 0, but instead regionsize)
-	as->regions[0] = &init_region;
+	as->regions[0] = init_region;
 
 	// return ENOSYS;
 	return 0; 

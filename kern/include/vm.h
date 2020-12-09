@@ -63,7 +63,7 @@ struct coremap_page {
     unsigned long block_len; 
 
     // add other info we may need for the paging algorithm
-}
+};
 
 
 /* Initialization function */
