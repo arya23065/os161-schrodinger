@@ -44,6 +44,9 @@ void vm_bootstrap(void) {
     // To align the free address to the page size
     free_addr = free_addr + PAGE_SIZE - (free_addr % PAGE_SIZE); 
 
+    // bool coremap_pages_init = false; 
+    unsigned long coremap_pages_initialised = 0; 
+
     for (unsigned long i = 0; i < num_coremap_pages; i++) {
         // if the first addr isn't 0, then that means that some pages are already in use by the current proc
         // if (i != 0) {
@@ -54,8 +57,12 @@ void vm_bootstrap(void) {
             coremap[i].status = DIRTY; 
             // coremap[i]->p_addr = i * PAGE_SIZE; 
         } else {
-            if (i < (free_addr - first_addr) / PAGE_SIZE) {
+            if (coremap_pages_initialised != ((free_addr - first_addr) / PAGE_SIZE)) {
+                coremap_pages_initialised++; 
                 coremap[i].status = FIXED; 
+                // if (coremap_pages_initialised == (free_addr - first_addr) / PAGE_SIZE) {
+                //     // coremap_pages_init = true; 
+                // }
             } else {
                 coremap[i].status = FREE; 
             }
@@ -92,13 +99,15 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 static
 paddr_t
 getppages(unsigned long npages) {
-    (void) npages;
 
     // spinlock_acquire(&stealmem_lock);
     paddr_t addr;
     unsigned long ppage_got = 0;
     bool first_ppage_got = false; 
     bool space_found = false; 
+    unsigned long max_block_found = 0; 
+    unsigned long curr_block_len = 0; 
+    unsigned long max_block_page_i = 0; 
 
     if (bootstrap_done) {
         spinlock_acquire(&coremap_lock); 
@@ -107,15 +116,40 @@ getppages(unsigned long npages) {
             if (ppage_got == npages) {
                 break; 
             }
-            if (i == num_coremap_pages - 1 && coremap[i].status != FREE) {
+            if (i == num_coremap_pages - 1 && (npages > 1 || (npages == 1 && coremap[i].status != FREE)) ) {
                 //replace something!!!!!
                 // need a replacement policy!!!!!!!!!!!!!!! - must never be a fixed page!!!!!
-                // when evicting a page, based on the replaement policy, flush its content, mark it's status as clean 
+                // when evicting a page, based on the replaement policy, flush its content, mark it's status as clean
+
+                // max_block_page_i = ; 
+
+                addr = coremap[max_block_page_i].p_addr; 
+                coremap[max_block_page_i].block_len = npages;
+
+                for (unsigned long j = 0; j < npages; j++) {
+                    if (coremap[max_block_page_i + j].status != FREE) {
+                        KASSERT(coremap[max_block_page_i + j].status != FIXED); 
+                    }
+                    coremap[max_block_page_i + j].status = DIRTY; 
+                }
+
+                break; 
+
+
             } else if (coremap[i].status == FREE) {
                 // checking that there is a contiguous block of npages that are free
+                curr_block_len = 0; 
+
                 for (unsigned long j = 0; j < npages; j++) {
                     if (coremap[i + j].status != FREE) {
                         space_found = false; 
+                        curr_block_len++; 
+
+                        if (curr_block_len > max_block_found) {
+                            max_block_found = curr_block_len; 
+                            max_block_page_i = i; 
+                        }
+
                         break;
                     } else if (coremap[i + j].status == FREE && j == npages - 1) {
                         space_found = true; 
