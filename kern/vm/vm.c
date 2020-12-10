@@ -216,6 +216,9 @@ void free_kpages(vaddr_t addr) {
                 // break; 
             }
         } else {
+            if (npages == 0) {
+                break; 
+            }
             if (pages_freed == npages) {
                 break;
             } else {
