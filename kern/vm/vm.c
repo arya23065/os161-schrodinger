@@ -10,87 +10,73 @@
 #include <vm.h>
 
 
-/* start address from which onward, one can allocate physical pages */
+// start address from which onward, one can allocate physical pages
 paddr_t free_addr;
 
-/* Coremap - an array of coremap pages / physical pages */
-struct coremap_page *coremap; 
-static struct spinlock coremap_lock = SPINLOCK_INITIALIZER;
-unsigned long num_coremap_pages; 
-bool bootstrap_done; 
+// Coremap - an array of coremap pages / physical pages
+struct coremap_page *coremap;
+static struct spinlock coremap_lock = SPINLOCK_INITIALIZER;         // To initialize spinlock during boot
+unsigned long num_coremap_pages;                                    // Number of physical pages
+bool bootstrap_done;                                                // Boolean to signify if VM is initialized or not
 
 void vm_bootstrap(void) {
 
-    // initialize coremap
-    // get physical size of system using ram_getsize
+    paddr_t last_addr = ram_getsize();          // Gives us last physical address
+    paddr_t first_addr = ram_getfirstfree();    // Gives us first free physical address to know how much memory we have that we need to manage.
 
-    // this call doesnt need to be synchronised 
-    paddr_t last_addr = ram_getsize(); 
-    paddr_t first_addr = ram_getfirstfree(); 
-
-    /* Manually assigning physical memory for the core map*/
-    // coremap = (const struct coremap_page*) PADDR_TO_KVADDR(first_addr);
-    // struct coremap_page* coremap_first_page = (struct coremap_page*) PADDR_TO_KVADDR(first_addr);
+    // Manually assigning physical memory for the core map
     coremap = (struct coremap_page*) PADDR_TO_KVADDR(first_addr);
 
     spinlock_acquire(&coremap_lock); 
-    // coremap = &coremap_first_page;
 
-    /* Total number of pages on system */
-    num_coremap_pages = (last_addr - 0) / PAGE_SIZE; 
-    // free_addr = first_addr + num_coremap_pages * ROUNDUP(sizeof(struct coremap_entry), PAGE_SIZE); 
+    // Total number of physical pages on system
+    num_coremap_pages = last_addr / PAGE_SIZE; 
+    // The first free address after memory is allocated to store coremap struct
     free_addr = first_addr + num_coremap_pages * sizeof(struct coremap_page); 
 
-    // To align the free address to the page size
+    // Aligning free_addr so that it is the base address of a page
     free_addr = free_addr + PAGE_SIZE - (free_addr % PAGE_SIZE); 
 
-    // bool coremap_pages_init = false; 
     unsigned long coremap_pages_initialised = 0; 
 
+    // Initializing all coremap_page entries
     for (unsigned long i = 0; i < num_coremap_pages; i++) {
-        // if the first addr isn't 0, then that means that some pages are already in use by the current proc
-        // if (i != 0) {
-        //     coremap[i] = (struct coremap_page*) PADDR_TO_KVADDR(first_addr + i * PAGE_SIZE); 
-        // }
-
+        // Set page status to dirty if page is before first_addr because these pages are already in use
         if (i < (first_addr - 0) / PAGE_SIZE) {
             coremap[i].status = DIRTY; 
-            // coremap[i]->p_addr = i * PAGE_SIZE; 
-        } else {
-            if (coremap_pages_initialised != ((free_addr - first_addr) / PAGE_SIZE)) {
-                coremap_pages_initialised++; 
-                coremap[i].status = FIXED; 
-                // if (coremap_pages_initialised == (free_addr - first_addr) / PAGE_SIZE) {
-                //     // coremap_pages_init = true; 
-                // }
-            } else {
-                coremap[i].status = FREE; 
-            }
-            // coremap[i]->p_addr = i * PAGE_SIZE; 
         }
+        // Set all pages used for storing coremap struct to FIXED so that they can't be freed
+        else {
+            if (coremap_pages_initialised != ((free_addr - first_addr) / PAGE_SIZE)) {
+                coremap_pages_initialised++;
+                coremap[i].status = FIXED;
+            }
+            // All other pages are set to FREE
+            else {
+                coremap[i].status = FREE;
+            }
+        }
+
+        // Initialize the physical and virtual base address of all pages
         coremap[i].p_addr = i * PAGE_SIZE; 
         coremap[i].v_addr = PADDR_TO_KVADDR(coremap[i].p_addr); // check this!!!!!
         coremap[i].block_len = 0; 
     }
 
-    coremap[0].status = DIRTY; 
+    coremap[0].status = DIRTY;
 
-    spinlock_release(&coremap_lock); 
+    spinlock_release(&coremap_lock);
 
-    bootstrap_done = true; 
+    // Set bootstrap_done to true so that other functions know that they can use vm functions instead of ram functions
+    bootstrap_done = true;
 
-    return; 
-
-    // At the end of vm_bootstrap, we may want to set some flags to indicate that vm has already bootstrapped, 
-    // since functions like alloc_kpages may call different routines to get physical page before and after vm_bootstrap.
+    return;
 
 }
 
 int vm_fault(int faulttype, vaddr_t faultaddress) {
     (void) faulttype;
     (void) faultaddress;
-
-    
 
     return 0;
 }
@@ -100,7 +86,6 @@ static
 paddr_t
 getppages(unsigned long npages) {
 
-    // spinlock_acquire(&stealmem_lock);
     paddr_t addr;
     unsigned long ppage_got = 0;
     bool first_ppage_got = false; 
@@ -113,19 +98,17 @@ getppages(unsigned long npages) {
         spinlock_acquire(&coremap_lock); 
 
         for (unsigned long i = 0; i < num_coremap_pages; i++) {
-            if (ppage_got == npages) {
+            if (ppage_got == npages) {      // Exit loop if we got the pages we need
                 break; 
             }
+            // Use replacement policy if we don't have enough free pages
+            // Find the largest block of free contiguous memory that is less than npages and evict pages after it to make enough space so that we have npages free pages
             if (i == num_coremap_pages - 1 && (npages > 1 || (npages == 1 && coremap[i].status != FREE)) ) {
-                //replace something!!!!!
-                // need a replacement policy!!!!!!!!!!!!!!! - must never be a fixed page!!!!!
-                // when evicting a page, based on the replaement policy, flush its content, mark it's status as clean
-
-                // max_block_page_i = ; 
 
                 addr = coremap[max_block_page_i].p_addr; 
                 coremap[max_block_page_i].block_len = npages;
 
+                // Evict the number of pages we need
                 for (unsigned long j = 0; j < npages; j++) {
                     if (coremap[max_block_page_i + j].status != FREE) {
                         KASSERT(coremap[max_block_page_i + j].status != FIXED); 
@@ -136,26 +119,33 @@ getppages(unsigned long npages) {
                 break; 
 
 
-            } else if (coremap[i].status == FREE) {
-                // checking that there is a contiguous block of npages that are free
+            }
+            // Find the number of contiguous pages of physical memory we have if the current page is free
+            else if (coremap[i].status == FREE) {
                 curr_block_len = 0; 
 
+                // Check if we found enough space
                 for (unsigned long j = 0; j < npages; j++) {
+
+                    // If we find the largest block of free memory less than npages, set parameters for replacement policy and use it
                     if (coremap[i + j].status != FREE) {
                         space_found = false; 
                         curr_block_len++; 
 
                         if (curr_block_len > max_block_found) {
                             max_block_found = curr_block_len; 
-                            max_block_page_i = i; 
+                            max_block_page_i = i;                   // Set parameters for replacement policy (see above) if enough space isn't found
                         }
 
                         break;
-                    } else if (coremap[i + j].status == FREE && j == npages - 1) {
+                    }
+                    // If we have enough space, set space_found to true so that we don't try to use replacement policy
+                    else if (coremap[i + j].status == FREE && j == npages - 1) {
                         space_found = true; 
                     }
                 }
 
+                // If we found enough space, allocate it by setting status of pages to DIRTY
                 if (space_found) {
                     if (!first_ppage_got) {
                         addr = coremap[i].p_addr; 
@@ -171,57 +161,49 @@ getppages(unsigned long npages) {
         spinlock_release(&coremap_lock); 
         
     } else {
-        // if the core map hasn't been initilised, we must directly take pages from the ram, without any action related to the coremap
-        // later, the first free page will be > 0, indicating that pages are already in use, and we set them to dirty during coremap initialisation anyway
+        // if the core map hasn't been initialized, we must directly take pages from the ram, without any action related to the coremap
         addr = ram_stealmem(npages);
     }
 
-    // spinlock_release(&stealmem_lock);
     return addr;
 }
 
 vaddr_t alloc_kpages(unsigned npages) {
     // called by kmalloc
-    // When a physical page is first allocated, its state is DIRTY, not CLEAN. Since this page do not 
-    // have a copy in swap file (disk). Remember that in a virtual memory system, memory is just a cache of disk.
 
 	paddr_t pa;
-	pa = getppages(npages);
+	pa = getppages(npages);     // Get the base physical address of memory allocated by getppages
 	if (pa == 0) {
-		return 0;
+		return 0;               // Return 0 (NULL) if base physical address is 0
 	}
-	return PADDR_TO_KVADDR(pa);
+	return PADDR_TO_KVADDR(pa); // Return virtual address translation of physical address if getppages is successful
 }
 
 void free_kpages(vaddr_t addr) {
-    //When you need to evict a page, you look up the physical address in the core map, locate the address space whose page 
-    // you are evicting and modify the corresponding state information to indicate that the page will no longer be in memory.
-    //  If the page is dirty, it must first be written to the backing store or swap (discussed below).
-    // https://www.eecg.utoronto.ca/~yuan/teaching/ece344/asst4.html
-    (void) addr;
 
     spinlock_acquire(&coremap_lock); 
     unsigned long npages = 0;
     unsigned long pages_freed = 0; 
     bool page_found = false; 
 
+    // Free pages
     for (unsigned long i = 0; i < num_coremap_pages; i++) {
         if (!page_found) {
             if (coremap[i].v_addr == addr) {
                 KASSERT(coremap[i].status != FIXED); // fixed pages cannot be freed
-                coremap[i].status = FREE; 
-                npages = coremap[i].block_len; 
-                pages_freed++; 
+                coremap[i].status = FREE;           // If we found first page of block that we want to free, set it to FREE
+                npages = coremap[i].block_len;      // Find the number of pages we need to free
+                pages_freed++;
                 page_found = true; 
                 // break; 
             }
         } else {
-            if (npages == 0) {
+            if (npages == 0) {      // Don't free anything if only 0 or 1 page(s) need to be freed and exit loop
                 break; 
             }
-            if (pages_freed == npages) {
+            if (pages_freed == npages) {    // Exit loop if number of pages freed is npages
                 break;
-            } else {
+            } else {                        // Set page status to free if it belongs to the block of memory we are trying to free and update the number of pages we have freed
                 coremap[i].status = FREE; 
                 pages_freed++; 
             }

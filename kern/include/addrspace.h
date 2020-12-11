@@ -41,33 +41,6 @@
 struct vnode;
 
 /*
- * Page Table Entry struct.
- * Stores information about an entry in the page table
- */
-
-struct pt_entry {
-    vaddr_t vpn;      // Virtual address
-    paddr_t ppn;      // Physical address
-    unsigned int perm;  // Permissions - if readable 001, if writeable 010, if executable 100
-};
-
-
-/*
- * Region struct
- * Consists information about regions in the address space such as the
- * virtual and physical base, along with the number of pages that the
- * region spans
- */
-
-struct region {
-    vaddr_t vbase;
-    paddr_t pbase;
-    unsigned int perm;
-    size_t npages;
-};
-
-
-/*
  * Address space - data structure associated with the virtual memory
  * space of a process.
  *
@@ -85,11 +58,6 @@ struct addrspace {
         paddr_t as_stackpbase;
 #else
         /* Put stuff here for your VM system */
-        struct region **regions;
-        struct pt_entry **pagetable; // max entries is from 0 to top of stack  - 2^20 pages/process
-        size_t regions_len; // why do we need this????????????
-        vaddr_t as_stackbase, as_stackend;
-        // add support for heap - start and end addresses
 #endif
 };
 
@@ -158,12 +126,6 @@ int               as_define_stack(struct addrspace *as, vaddr_t *initstackptr);
  */
 
 int load_elf(struct vnode *v, vaddr_t *entrypoint);
-
-
-/* PAGETABLE OPERATIONS */
-struct pagetable_entry *pagetable_create(struct pt_entry **pagetable, size_t size); // create e pagetable entry
-void pagetable_destroy(struct pt_entry **pagetable);
-struct pagetable_entry *pagetable_get_entry(struct pt_entry **pagetable, vaddr_t vpn);
 
 
 #endif /* _ADDRSPACE_H_ */

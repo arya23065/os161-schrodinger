@@ -46,21 +46,19 @@
 
 
 typedef enum {
-    FREE,
-    FIXED,  // these pages will never be swapped to disk - for kernel pages, user stack and code segment pages
-    DIRTY,
-    CLEAN
+    FREE,   // these pages are free
+    FIXED,  // these pages will never be freed (until shutdown)
+    DIRTY,  // these are pages that are allocated
+    CLEAN   // these are pages that got allocated and then flushed
 } coremap_page_status;
 
 /* This struct represents a physical page */
 struct coremap_page {
 
-    /* The address space that the uses this physical page */
-    struct addrspace* as;
-    vaddr_t v_addr; 
-    paddr_t p_addr; 
-    coremap_page_status status; 
-    unsigned long block_len; 
+    vaddr_t v_addr;                 // Base vaddr of page
+    paddr_t p_addr;                 // Base paddr of page
+    coremap_page_status status;     // Status of page
+    unsigned long block_len;        // Number of contiguous pages of free physical memory available starting at this page
 
     // add other info we may need for the paging algorithm
 };
